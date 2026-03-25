@@ -2,22 +2,17 @@
 // ============================================================
 //  admin.php — Painel de administração ElitePLAY
 // ============================================================
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-header('Cache-Control: post-check=0, pre-check=0', false);
-header('Pragma: no-cache');
-header('Expires: 0');
+require_once __DIR__ . '/middleware.php';
 
-require_once __DIR__ . '/security.php';
-configurar_sessao();
+if (!isset($usuario_logado['is_admin']) || $usuario_logado['is_admin'] != 1) {
+    header('Location: index.php');
+    exit;
+}
 
-// Autenticação
-$sessao = validar_sessao_cookie();
-if (!$sessao) { header('Location: login.php'); exit; }
-
-// Verifica se é admin
-$meAdmin = db()->prepare('SELECT is_admin, email FROM usuarios WHERE id = ? AND ativo = 1 LIMIT 1');
-$meAdmin->execute([$sessao['usuario_id']]);
-$me = $meAdmin->fetch();
+$me = [
+    'is_admin' => $usuario_logado['is_admin'],
+    'email' => $usuario_logado['email']
+];
 if (!$me || !$me['is_admin']) {
     header('Location: index.php');
     exit;
