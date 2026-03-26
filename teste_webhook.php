@@ -95,7 +95,7 @@
         </div>
 
         <div class="card">
-            <h2>📋 Últimos Logs Recebidos</h2>
+            <h2>📋 Últimos Logs Recebidos <span id="refreshIndicator" style="color: #666; font-size: 0.8rem;">○</span></h2>
             <button onclick="loadLogs()" class="btn btn-test" style="margin-bottom: 15px;">🔄 Atualizar Logs</button>
             <div id="logsContainer">
                 <p class="empty">Nenhum log ainda. Envie um payload acima.</p>
@@ -154,7 +154,9 @@
                 responseDiv.style.color = res.ok ? '#00ff88' : '#e94560';
                 responseDiv.innerHTML = `<strong>Status ${res.status}:</strong> ${text}`;
                 
-                loadLogs();
+// Auto-refresh logs a cada 2 segundos
+        loadLogs();
+        setInterval(loadLogs, 2000);
             } catch (err) {
                 responseDiv.style.display = 'block';
                 responseDiv.style.color = '#e94560';
@@ -162,21 +164,36 @@
             }
         });
 
+let lastLogCount = 0;
+        
         async function loadLogs() {
             try {
                 const res = await fetch('webhook_log.txt');
                 const text = await res.text();
                 const logsContainer = document.getElementById('logsContainer');
+                const refreshIndicator = document.getElementById('refreshIndicator');
                 
                 if (text.trim() === '') {
-                    logsContainer.innerHTML = '<p class="empty">Nenhum log ainda.</p>';
+                    logsContainer.innerHTML = '<p class="empty">Nenhum log ainda. Aguardando webhook...</p>';
                     return;
                 }
                 
                 const lines = text.trim().split('\n').reverse().slice(0, 20);
+                
+                if (lines.length > lastLogCount) {
+                    refreshIndicator.textContent = '●';
+                    refreshIndicator.style.color = '#00ff88';
+                    setTimeout(() => {
+                        refreshIndicator.textContent = '○';
+                        refreshIndicator.style.color = '#666';
+                    }, 1000);
+                }
+                lastLogCount = lines.length;
+                
                 logsContainer.innerHTML = lines.map(line => {
                     const [dateTime, ...rest] = line.split(' | ');
-                    return `<div class="log-entry"><span class="log-time">${dateTime}</span><br>${rest.join(' | ')}</div>`;
+                    const isSuccess = rest.join(' ').includes('sucesso') || rest.join(' ').includes('criado') || rest.join(' ').includes('renovado');
+                    return `<div class="log-entry" style="border-left-color: ${isSuccess ? '#00ff88' : '#e94560'}"><span class="log-time">${dateTime}</span><br><pre style="white-space: pre-wrap; margin: 5px 0 0 0; font-size: 0.8rem;">${rest.join(' | ')}</pre></div>`;
                 }).join('');
             } catch (err) {
                 console.error('Erro ao carregar logs:', err);
