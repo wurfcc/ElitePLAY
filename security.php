@@ -180,9 +180,11 @@ function validar_sessao_cookie(): ?array {
         }
     }
 
-    // Bloqueia usuário com dias zerados ou nulos
+    // Bloqueia usuário com dias zerados ou nulos (exceto admins)
     if (!isset($sessao['dias_acesso']) || $sessao['dias_acesso'] <= 0) {
-        return ['expired' => true, 'usuario_id' => $sessao['usuario_id'], 'email' => $sessao['email'], 'dias_acesso' => $sessao['dias_acesso'] ?? 0];
+        if (!isset($sessao['is_admin']) || $sessao['is_admin'] != 1) {
+            return ['expired' => true, 'usuario_id' => $sessao['usuario_id'], 'email' => $sessao['email'], 'dias_acesso' => $sessao['dias_acesso'] ?? 0, 'is_admin' => $sessao['is_admin'] ?? 0];
+        }
     }
 
     return $sessao;
