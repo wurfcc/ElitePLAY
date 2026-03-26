@@ -991,6 +991,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
         let embedtvChannels = [];
         let lastScrapedScores = [];
         let dataLoadedFromCache = false;
+        let isCategoryMode = false;
 
         // Cache utilities
         function getCache(key) {
@@ -1721,8 +1722,9 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             }
         }
 
-        // Atualização periódica de placares (cada 15s) - REATIVADA
+        // Atualização periódica de placares (cada 15s) - só atualiza se não estiver em modo categoria
         setInterval(async () => {
+            if (isCategoryMode) return;
             const isSearching = document.querySelector('.search-input').value.trim().length > 0;
             if (allJogos.length > 0 && !isSearching) {
                 const scraped = await fetchLiveScores();
@@ -1854,6 +1856,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             jogosBtn.className = 'cat-btn';
             jogosBtn.innerText = 'JOGOS DE HOJE';
             jogosBtn.onclick = () => {
+                isCategoryMode = false;
                 renderMainGridJogos(allJogosProcessed, jogosBtn);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
                 closeSidebar();
@@ -2118,6 +2121,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             
             // Se for "all", mostra todo o conteúdo e volta a seção de jogos se houver
             if (category === 'all') {
+                isCategoryMode = false;
                 horizontalSection.style.display = (allJogosProcessed.length > 0) ? 'block' : 'none';
                 grid.style.display = 'grid';
                 const mainTitleRow = document.querySelector('.channels-section .section-header-premium');
@@ -2127,6 +2131,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             }
 
             // Oculta jogos se estiver em categorias
+            isCategoryMode = true;
             horizontalSection.style.display = 'none';
             grid.style.display = 'grid';
 
