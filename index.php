@@ -1282,12 +1282,24 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
                 : allChannels;
 
             if (typeof channelsToUse !== 'undefined' && channelsToUse.length > 0) {
-                const gameTitleNorm = normalizeName(jogo.title);
-                let matchedChannel = channelsToUse.find(c => {
-                    const chanNameNorm = normalizeName(c.nome);
-                    return gameTitleNorm.includes(chanNameNorm) || chanNameNorm.includes(gameTitleNorm);
-                });
+                // Primeiro tenta encontrar pelo embedtv_id (mais confiável)
+                if (originalEmbedTvUrl) {
+                    const urlId = originalEmbedTvUrl.split('/').pop().split('?')[0];
+                    matchedChannel = channelsToUse.find(c => {
+                        return c.embedtv_id === urlId;
+                    });
+                }
 
+                // Se não encontrou, tenta pelo nome do jogo
+                if (!matchedChannel) {
+                    const gameTitleNorm = normalizeName(jogo.title);
+                    matchedChannel = channelsToUse.find(c => {
+                        const chanNameNorm = normalizeName(c.nome);
+                        return gameTitleNorm.includes(chanNameNorm) || chanNameNorm.includes(gameTitleNorm);
+                    });
+                }
+
+                // Se ainda não encontrou, tenta pelo ID normalizado
                 if (!matchedChannel && originalEmbedTvUrl) {
                     let urlId = originalEmbedTvUrl.split('id=').pop().split('&')[0];
                     if (!urlId || urlId.includes('/') || urlId === originalEmbedTvUrl) {
@@ -1297,7 +1309,11 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
                         const idNorm = normalizeName(urlId);
                         matchedChannel = channelsToUse.find(c => {
                             const cn = normalizeName(c.nome);
-                            return cn === idNorm || cn.replace(/1$/) === idNorm || idNorm.replace(/1$/) === cn;
+                            if (cn === idNorm || cn.replace(/1$/) === idNorm || idNorm.replace(/1$/) === cn) return true;
+                            // Tratamento especial para SporTV X: "sportoX" = "sportvX"
+                            const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
+                            const idNormSportv = idNorm.replace(/^sporto(\d+)$/, 'sportv$1');
+                            return cnSportv === idNorm || cn === idNormSportv || cnSportv === idNormSportv;
                         });
                     }
                 }
@@ -1317,7 +1333,11 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
                     const idNorm = normalizeName(urlId);
                     const matchByUrl = channelsToUse.find(c => {
                         const cn = normalizeName(c.nome);
-                        return cn === idNorm || cn.replace(/1$/) === idNorm || idNorm.replace(/1$/) === cn;
+                        if (cn === idNorm || cn.replace(/1$/) === idNorm || idNorm.replace(/1$/) === cn) return true;
+                        // Tratamento especial para SporTV X: "sportoX" = "sportvX"
+                        const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
+                        const idNormSportv = idNorm.replace(/^sporto(\d+)$/, 'sportv$1');
+                        return cnSportv === idNorm || cn === idNormSportv || cnSportv === idNormSportv;
                     });
                     if (matchByUrl && matchByUrl.streams) {
                         detectedStreams = matchByUrl.streams.slice();
@@ -1422,8 +1442,9 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
 
             console.log('[DEBUG] finalStreams:', finalStreams.length, finalStreams.map(s => s.name));
 
-            if (finalStreams.length > 0) {
-                gameStreamsStr = btoa(unescape(encodeURIComponent(JSON.stringify(finalStreams))));
+            // Usa detectedStreams (todas as streams do canal) ao invés de finalStreams (que pode ser filtrado pelo override)
+            if (detectedStreams.length > 0) {
+                gameStreamsStr = btoa(unescape(encodeURIComponent(JSON.stringify(detectedStreams))));
             }
 
             const competition = jogo.scrapedLeague || jogo.data?.league || 'Futebol';
