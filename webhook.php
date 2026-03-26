@@ -11,13 +11,12 @@ header('Content-Type: application/json');
 $rawPayload = file_get_contents('php://input');
 $payload = json_decode($rawPayload, true);
 
-// Log para debug
+// Log do payload completo
 $logFile = __DIR__ . '/webhook_log.txt';
+file_put_contents($logFile, date('Y-m-d H:i:s') . ' | ' . $rawPayload . PHP_EOL, FILE_APPEND);
 
 // Verifica se é evento de pagamento aprovado
 if (!isset($payload['event']) || $payload['event'] !== 'payment.approved') {
-    file_put_contents($logFile, date('Y-m-d H:i:s') . ' | Evento ignorado: ' . ($payload['event'] ?? 'vazio') . PHP_EOL, FILE_APPEND);
-    http_response_code(200);
     echo json_encode(['status' => 'ignored']);
     exit;
 }
@@ -29,7 +28,6 @@ $total = intval($payload['data']['order']['total'] ?? 0);
 
 // Validações básicas
 if (!$email || !$orderId) {
-    file_put_contents($logFile, date('Y-m-d H:i:s') . ' | ERRO: Email ou OrderID inválido' . PHP_EOL, FILE_APPEND);
     http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => 'Missing email or orderId']);
     exit;
@@ -44,7 +42,6 @@ $planos = [
 ];
 
 if (!isset($planos[$total])) {
-    file_put_contents($logFile, date('Y-m-d H:i:s') . " | ERRO: Valor $total não corresponde a nenhum plano" . PHP_EOL, FILE_APPEND);
     http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => 'Unknown plan value']);
     exit;
@@ -56,21 +53,18 @@ $nomePlano = $plano['nome'];
 
 try {
     $pdo = db();
-    
+
     // Verifica se usuário já existe
     $stmt = $pdo->prepare('SELECT id, dias_acesso FROM usuarios WHERE email = ?');
     $stmt->execute([$email]);
     $usuario = $stmt->fetch();
-    
+
     if ($usuario) {
         // Usuário existe - soma os dias
         $novosDias = $usuario['dias_acesso'] + $dias;
         $stmt = $pdo->prepare('UPDATE usuarios SET dias_acesso = ? WHERE id = ?');
         $stmt->execute([$novosDias, $usuario['id']]);
-        
-        $mensagem = "Usuário renovado: $email | Plano: $nomePlano ($dias dias) | Total: $novosDias dias";
-        file_put_contents($logFile, date('Y-m-d H:i:s') . " | $mensagem" . PHP_EOL, FILE_APPEND);
-        
+
         http_response_code(200);
         echo json_encode([
             'status' => 'success',
@@ -84,10 +78,7 @@ try {
         // Novo usuário - cria com dias de acesso
         $stmt = $pdo->prepare('INSERT INTO usuarios (email, ativo, dias_acesso) VALUES (?, 1, ?)');
         $stmt->execute([$email, $dias]);
-        
-        $mensagem = "Usuário criado: $email | Plano: $nomePlano ($dias dias)";
-        file_put_contents($logFile, date('Y-m-d H:i:s') . " | $mensagem" . PHP_EOL, FILE_APPEND);
-        
+
         http_response_code(200);
         echo json_encode([
             'status' => 'success',
@@ -97,9 +88,8 @@ try {
             'days' => $dias
         ]);
     }
-    
+
 } catch (Exception $e) {
-    file_put_contents($logFile, date('Y-m-d H:i:s') . ' | ERRO BD: ' . $e->getMessage() . PHP_EOL, FILE_APPEND);
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => 'Database error']);
 }
