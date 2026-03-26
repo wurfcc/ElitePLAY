@@ -182,7 +182,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             top: 72px;
             left: 0;
             width: 248px;
-            height: calc(100vh - 72px);
+            height: calc(100vh - 72px - 10px);
             background: linear-gradient(180deg, rgba(15,17,26,0.97) 0%, rgba(10,12,20,0.97) 100%);
             border-right: 1px solid rgba(255, 255, 255, 0.08);
             z-index: 100;
@@ -311,12 +311,6 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
                 width: 32px;
                 height: 32px;
                 font-size: 14px;
-            }
-        }
-
-        @media (min-width: 769px) {
-            .sidebar {
-                margin-bottom: 10px;
             }
         }
 
