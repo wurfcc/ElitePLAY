@@ -37,9 +37,14 @@ if ($usuario_logado === null) {
     exit;
 }
 
-// Verifica se os dias de acesso expiraram
+// Verifica se os dias de acesso expiraram ou se é 0/nulo
 if (isset($usuario_logado['expired']) && $usuario_logado['expired'] === true) {
-    // Redireciona para página de pagamento
+    header('Location: pagamento.php');
+    exit;
+}
+
+// Bloqueia usuário com dias zerados ou nulos (acesso bloqueado)
+if (!isset($usuario_logado['dias_acesso']) || $usuario_logado['dias_acesso'] <= 0) {
     header('Location: pagamento.php');
     exit;
 }

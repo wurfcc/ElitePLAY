@@ -176,8 +176,13 @@ function validar_sessao_cookie(): ?array {
         
         if ($expiresAt && $expiresAt < new DateTime()) {
             // Dias de acesso expirados
-            return ['expired' => true, 'usuario_id' => $sessao['usuario_id'], 'email' => $sessao['email']];
+            return ['expired' => true, 'usuario_id' => $sessao['usuario_id'], 'email' => $sessao['email'], 'dias_acesso' => $sessao['dias_acesso']];
         }
+    }
+
+    // Bloqueia usuário com dias zerados ou nulos
+    if (!isset($sessao['dias_acesso']) || $sessao['dias_acesso'] <= 0) {
+        return ['expired' => true, 'usuario_id' => $sessao['usuario_id'], 'email' => $sessao['email'], 'dias_acesso' => $sessao['dias_acesso'] ?? 0];
     }
 
     return $sessao;
