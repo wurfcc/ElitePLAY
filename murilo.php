@@ -15,7 +15,7 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: red;
+            background: linear-gradient(135deg, #00ff00, #0000ff);
         }
         h1 {
             color: white;
