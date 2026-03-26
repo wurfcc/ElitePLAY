@@ -103,10 +103,26 @@
         </div>
 
         <div class="card">
-            <h2>🎯 Payload Simulado (Recomendado para Teste)</h2>
-            <pre id="samplePayload">// Aguardando Payload do Lowify...
-// Cole aqui o payload que o Lowify envia</pre>
-            <button onclick="useSample()" class="btn" style="margin-top: 10px;">Usar como Payload</button>
+            <h2>🎯 Playloads Simulados (Lowify)</h2>
+            <pre id="samplePayload">// Plano Mensal (R$10 = 1000 centavos)
+{
+    "event": "payment.approved",
+    "data": {
+        "customer": { "email": "cliente@exemplo.com" },
+        "order": { "id": "123456", "total": 1000 }
+    }
+}
+
+// Plano Semestral (R$47 = 4700 centavos)
+{
+    "event": "payment.approved",
+    "data": {
+        "customer": { "email": "cliente@exemplo.com" },
+        "order": { "id": "789012", "total": 4700 }
+    }
+}</pre>
+            <button onclick="useSample('mensal')" class="btn" style="margin-top: 10px; margin-right: 10px;">Testar Mensal (R$10)</button>
+            <button onclick="useSample('semestral')" class="btn" style="margin-top: 10px;">Testar Semestral (R$47)</button>
         </div>
 
         <div class="card">
@@ -167,14 +183,28 @@
             }
         }
 
-        function useSample() {
-            const sample = {
-                event: "payment.approved",
-                data: {
-                    customer: { email: "cliente@exemplo.com" },
-                    order: { id: "123456", total: 1000 }
-                }
-            };
+        function useSample(tipo) {
+            const email = "cliente_" + Date.now() + "@teste.com";
+            let sample;
+            
+            if (tipo === 'semestral') {
+                sample = {
+                    event: "payment.approved",
+                    data: {
+                        customer: { email: email },
+                        order: { id: "SEM" + Date.now(), total: 4700 }
+                    }
+                };
+            } else {
+                sample = {
+                    event: "payment.approved",
+                    data: {
+                        customer: { email: email },
+                        order: { id: "MEN" + Date.now(), total: 1000 }
+                    }
+                };
+            }
+            
             document.getElementById('payloadInput').value = JSON.stringify(sample, null, 2);
         }
 
