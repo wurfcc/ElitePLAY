@@ -71,15 +71,16 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             justify-content: space-between;
             align-items: center;
             padding: 14px !important;
-            background: rgba(15, 17, 26, 0.96);
+            background: #0E1019;
             -webkit-backdrop-filter: blur(14px);
             position: sticky;
             top: 0;
+            transform: translatey(-1px);
             z-index: 200;
             border: 1px solid rgba(255, 255, 255, 0.08);
             gap: 14px;
-            border-radius: 16px;
-            margin: 8px 8px 0px 8px;
+            border-radius: 0 0 16px 16px;
+            margin: 0px 8px 0px 8px;
         }
 
         .logo {
@@ -181,7 +182,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             position: fixed;
             top: 90px;
             left: 0;
-            margin: 8px;
+            margin: 0px 0px 8px 8px;
             width: 248px;
             height: calc(100vh - 72px - 34px);
             background: linear-gradient(180deg, rgba(15, 17, 26, 0.97) 0%, rgba(10, 12, 20, 0.97) 100%);

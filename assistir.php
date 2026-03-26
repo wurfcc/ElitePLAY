@@ -26,7 +26,7 @@ if (!empty($streams_json)) {
 // Tratamento de erro elegante se acessar direto
 if (empty($iframe_url)) {
     die("
-    <div style='background-color:#0b0d14; min-height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; color:white; font-family:sans-serif;'>
+    <div style='background-color:#05070A; min-height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; color:white; font-family:sans-serif;'>
         <h2 style='margin-bottom: 20px;'>Link não fornecido ou sessão expirada.</h2>
         <a href='index.php' style='background:#4f5bf5; color:white; text-decoration:none; padding:10px 20px; border-radius:8px; font-weight:bold;'>Voltar ao Início</a>
     </div>
@@ -44,7 +44,7 @@ if (empty($iframe_url)) {
     <script>jwplayer.key="64HPbvSQorQcd52B8XFuhMtEoitbvY/EXJmMBfKcXZQU2Rnn";</script>
     <style>
         :root {
-            --bg-dark: #0b0d14;
+            --bg-dark: #05070A;
             --bg-header: rgba(11, 13, 20, 0.85);
             --bg-card: #161a2b;
             --primary-blue: #4f5bf5;
@@ -77,16 +77,20 @@ if (empty($iframe_url)) {
         /* Barra de Topo do Player */
         header {
             display: flex;
-            align-items: center;
+            flex-wrap: wrap;
             justify-content: space-between;
-            padding: 15px var(--pad-x);
-            background-color: var(--bg-header);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            align-items: center;
+            padding: 14px !important;
+            background: #0E1019;
+            -webkit-backdrop-filter: blur(14px);
             position: sticky;
             top: 0;
-            z-index: 100;
+            transform: translatey(-1px);
+            z-index: 200;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            gap: 14px;
+            border-radius: 0 0 16px 16px;
+            margin: 0px 8px 0px 8px;
         }
 
         .header-left {
@@ -202,21 +206,19 @@ if (empty($iframe_url)) {
         .opt-btn {
             background-color: var(--bg-card);
             border: 1px solid rgba(255, 255, 255, 0.05);
-            color: var(--text-muted);
-            padding: 12px 20px;
+            color: #b4becd;
+            padding: 12px 16px;
             border-radius: 10px;
             cursor: pointer;
             font-weight: 700;
-            font-size: 13px;
+            font-size: 15px;
             transition: all 0.2s;
-            flex-grow: 1;
-            max-width: 200px;
         }
 
         .opt-btn.active {
-            border-color: var(--primary-blue);
-            color: var(--text-light);
-            background-color: var(--primary-glow);
+            border: none;
+            color: #FFF;
+            background: linear-gradient(135deg, var(--primary-blue), #4f5bf5, #2563eb) !important;
         }
 
         /* Footer */
