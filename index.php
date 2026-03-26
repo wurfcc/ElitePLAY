@@ -70,16 +70,16 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
-            padding: 14px var(--pad-x);
+            padding: 14px !important;
             background: rgba(15, 17, 26, 0.96);
-            backdrop-filter: blur(14px);
             -webkit-backdrop-filter: blur(14px);
             position: sticky;
             top: 0;
             z-index: 200;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             gap: 14px;
+            border-radius: 16px;
+            margin: 8px 8px 0px 8px;
         }
 
         .logo {
@@ -179,18 +179,20 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
         /* Sidebar */
         .sidebar {
             position: fixed;
-            top: 72px;
+            top: 90px;
             left: 0;
+            margin: 8px;
             width: 248px;
-            height: calc(100vh - 72px - 10px);
-            background: linear-gradient(180deg, rgba(15,17,26,0.97) 0%, rgba(10,12,20,0.97) 100%);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            height: calc(100vh - 72px - 34px);
+            background: linear-gradient(180deg, rgba(15, 17, 26, 0.97) 0%, rgba(10, 12, 20, 0.97) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             z-index: 100;
-            padding: 16px 0 22px 0;
+            padding: 8px;
             overflow-y: auto;
             scrollbar-width: thin;
-            scrollbar-color: rgba(255,255,255,0.14) transparent;
+            scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
             transition: transform 0.3s ease;
+            border-radius: 16px;
         }
 
         .sidebar::-webkit-scrollbar { width: 4px; }
@@ -208,13 +210,13 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
         .sidebar .cat-btn {
             background: transparent;
             border: none;
-            color: #b7c4da;
-            padding: 11px 20px;
+            color: #ffffff;
+            padding: 10px;
             border-radius: 0;
             cursor: pointer;
             white-space: normal;
-            font-weight: 700;
-            font-size: 14px;
+            font-weight: 600;
+            font-size: 15px;
             line-height: 1.2;
             display: flex;
             align-items: center;
@@ -226,14 +228,16 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
         }
 
         .sidebar .cat-btn:hover {
-            background: rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.08);
             color: var(--text-light);
+            border-radius: 8px;
         }
 
         .sidebar .cat-btn.active {
-            background: rgba(55, 114, 255, 0.1);
-            color: var(--primary-blue);
-            border-left-color: var(--primary-blue);
+            background: linear-gradient(135deg, var(--primary-blue), #2563eb);
+            color: #ffffff !important;
+            /* border-left-color: var(--primary-blue); */
+            border-radius: 8px;
         }
 
         /* Layout principal com sidebar */
@@ -323,9 +327,10 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
 
         .jogos-grid {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
-            padding: 10px 0;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 20px;
+            width: 100%;
+            padding: 0px; 
         }
 
         .carousel-wrapper {
@@ -437,16 +442,16 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 12px;
-            padding: 0 var(--pad-x);
+            padding: 16px 0 !important;
         }
 
         .card {
             background-color: var(--bg-card);
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            border: 1px solid rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-premium-border);
         }
 
         .card-img-container {
@@ -516,7 +521,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
 
         .btn-watch {
             width: 100%;
-            background-color: var(--primary-blue);
+            background: linear-gradient(135deg, var(--primary-blue), #2563eb) !important;
             color: var(--text-light);
             border: none;
             padding: 10px;
@@ -528,7 +533,13 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             justify-content: center;
             align-items: center;
             gap: 6px;
-            transition: opacity 0.2s;
+            transition: all 0.3s ease;
+        }
+
+        .btn-watch:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+            filter: brightness(1.1);
         }
 
         .btn-watch:active {
@@ -601,7 +612,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
         .game-card {
             background: var(--card-premium-bg);
             border: 1px solid var(--card-premium-border);
-            border-radius: 1.25rem;
+            border-radius: 16px;
             backdrop-filter: blur(var(--glass-blur));
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
@@ -840,6 +851,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             cursor: pointer;
             font-size: 0.9rem;
             transition: all 0.3s ease;
+            text-transform: uppercase;
         }
 
         .watch-premium-button:hover {
@@ -855,12 +867,12 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
         }
 
         .section-header-premium {
-            margin-bottom: 1rem;
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid var(--card-premium-border);
+            padding-bottom: 8px;
+            border-bottom: 1.5px solid var(--card-premium-border);
         }
 
         .section-header-premium h2 {
@@ -870,6 +882,19 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
+        }
+
+        .channels-section > .section-header-premium {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding-bottom: 8px;
+            border-bottom: 1.5px solid var(--card-premium-border);
+        }
+
+        .channels-section > .section-header-premium {
+            margin-top: 48px;
         }
 
         .count-badge-premium {
