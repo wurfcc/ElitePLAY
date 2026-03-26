@@ -36,19 +36,32 @@ if (!$email || !$productId) {
     exit;
 }
 
-// Identifica o plano pelo product_id (IDs internos do Lowify)
+// Identifica o plano pelo product_id E pelo nome do produto
 $planos = [
     '30453' => ['nome' => 'Mensal', 'dias' => 30],
     '30456' => ['nome' => 'Semestral', 'dias' => 180],
 ];
 
-if (!isset($planos[$productId])) {
+$plano = null;
+$nomeLower = strtolower($productName);
+
+// Primeiro tenta pelo ID
+if (isset($planos[$productId])) {
+    $plano = $planos[$productId];
+}
+// Se não encontrou pelo ID, tenta pelo nome
+elseif (stripos($nomeLower, 'semestral') !== false) {
+    $plano = ['nome' => 'Semestral', 'dias' => 180];
+} elseif (stripos($nomeLower, 'mensal') !== false) {
+    $plano = ['nome' => 'Mensal', 'dias' => 30];
+}
+
+if (!$plano) {
     http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => 'Unknown product ID: ' . $productId . ' | Nome: ' . $productName]);
     exit;
 }
 
-$plano = $planos[$productId];
 $dias = $plano['dias'];
 $nomePlano = $plano['nome'];
 
