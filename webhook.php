@@ -36,12 +36,10 @@ if (!$email || !$productId) {
     exit;
 }
 
-// Identifica o plano pelo product_id
-// ATENÇÃO: Ajuste os IDs conforme seu produto no Lowify
+// Identifica o plano pelo product_id (IDs internos do Lowify)
 $planos = [
-    'ncXXPc' => ['nome' => 'Mensal', 'dias' => 30],
-    'f33gDk' => ['nome' => 'Semestral', 'dias' => 180],
-    // Adicione mais IDs aqui conforme necessário
+    '30453' => ['nome' => 'Mensal', 'dias' => 30],
+    '30456' => ['nome' => 'Semestral', 'dias' => 180],
 ];
 
 if (!isset($planos[$productId])) {
