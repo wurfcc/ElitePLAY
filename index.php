@@ -314,6 +314,12 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             }
         }
 
+        @media (min-width: 769px) {
+            .sidebar {
+                margin-bottom: 10px;
+            }
+        }
+
         .section-title {
             margin: 0;
             padding: 0;
