@@ -68,7 +68,7 @@ usleep(random_int(80000, 200000));
 
 try {
     $stmt = db()->prepare('
-        SELECT id, ativo, dias_acesso
+        SELECT id, ativo, is_admin, dias_acesso, acesso_expira_em
         FROM usuarios
         WHERE email = ?
         LIMIT 1
@@ -91,6 +91,37 @@ if (!$usuario || !$usuario['ativo']) {
     exit;
 }
 
+// --- 5.1 Controle definitivo por usuarios.acesso_expira_em ---
+$userExpiresAt = null;
+$redirectAfterLogin = 'index.php';
+$expiredAccess = false;
+
+if ((int)$usuario['is_admin'] !== 1) {
+    $diasAcesso = $usuario['dias_acesso'];
+    $acessoExpiraEm = $usuario['acesso_expira_em'];
+
+    if (!empty($acessoExpiraEm)) {
+        $userExpiresAt = $acessoExpiraEm;
+
+        if (strtotime($acessoExpiraEm) <= time()) {
+            db()->prepare('UPDATE usuarios SET dias_acesso = 0 WHERE id = ?')->execute([(int)$usuario['id']]);
+            $expiredAccess = true;
+            $redirectAfterLogin = 'pagamento.php';
+        }
+    } elseif ($diasAcesso !== null) {
+        // Migração de legado: converte dias antigos em data absoluta de expiração
+        if ((int)$diasAcesso <= 0) {
+            $expiredAccess = true;
+            $redirectAfterLogin = 'pagamento.php';
+            $userExpiresAt = date('Y-m-d H:i:s', time() - 60);
+            db()->prepare('UPDATE usuarios SET dias_acesso = 0, acesso_expira_em = ? WHERE id = ?')->execute([$userExpiresAt, (int)$usuario['id']]);
+        } else {
+            $userExpiresAt = date('Y-m-d H:i:s', time() + ((int)$diasAcesso * 24 * 60 * 60));
+            db()->prepare('UPDATE usuarios SET acesso_expira_em = ? WHERE id = ?')->execute([$userExpiresAt, (int)$usuario['id']]);
+        }
+    }
+}
+
 // --- 6. Login bem-sucedido ---
 // Previne session fixation: gera novo ID antes de gravar dados
 session_regenerate_id(true);
@@ -104,12 +135,6 @@ try {
     ')->execute([(int)$usuario['id']]);
 } catch (\Throwable $e) {
     // Não bloqueia o login se a revogação falhar (tentará novamente no ping)
-}
-
-// Calcula data de expiração baseada em dias_acesso
-$userExpiresAt = null;
-if (!empty($usuario['dias_acesso'])) {
-    $userExpiresAt = date('Y-m-d H:i:s', time() + ((int)$usuario['dias_acesso'] * 24 * 60 * 60));
 }
 
 // Cria a nova sessão (única e exclusiva)
@@ -128,10 +153,15 @@ setcookie(SESSION_NAME, $token, $cookie_options);
 
 // Zera os contadores de tentativa deste IP/email
 resetar_tentativas($ip, $email);
-log_acesso((int)$usuario['id'], $ip, true, 'ok');
+log_acesso((int)$usuario['id'], $ip, true, $expiredAccess ? 'ok_expirado' : 'ok');
 
 // Regenera o CSRF token após login (invalida o anterior)
 unset($_SESSION[CSRF_TOKEN_KEY]);
 
-echo json_encode(['success' => true, 'message' => 'Acesso liberado!']);
+echo json_encode([
+    'success' => true,
+    'message' => $expiredAccess ? 'Seu plano expirou. Redirecionando para renovação...' : 'Acesso liberado!',
+    'redirect' => $redirectAfterLogin,
+    'expired' => $expiredAccess
+]);
 exit;

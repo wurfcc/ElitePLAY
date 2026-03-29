@@ -151,7 +151,7 @@ function validar_sessao_cookie(): ?array {
 
     $stmt = $pdo->prepare('
         SELECT s.id AS sessao_id, s.usuario_id, s.ip, s.expires_at, s.user_expires_at,
-               u.email, u.ativo, u.is_admin, u.dias_acesso
+               u.email, u.ativo, u.is_admin, u.dias_acesso, u.acesso_expira_em
         FROM sessoes s
         JOIN usuarios u ON u.id = s.usuario_id
         WHERE s.token_hash = ?
@@ -167,23 +167,38 @@ function validar_sessao_cookie(): ?array {
         return null;
     }
 
-    // Verifica se o usuário tem limite de dias de acesso
-    if ($sessao['dias_acesso'] !== null) {
-        // Usa user_expires_at se existir, senão calcula
-        $expiresAt = $sessao['user_expires_at'] 
-            ? new DateTime($sessao['user_expires_at']) 
-            : null;
-        
-        if ($expiresAt && $expiresAt < new DateTime()) {
-            // Dias de acesso expirados
-            return ['expired' => true, 'usuario_id' => $sessao['usuario_id'], 'email' => $sessao['email'], 'dias_acesso' => $sessao['dias_acesso']];
-        }
-    }
+    // Admin nunca bloqueia por validade de plano
+    if ((int)$sessao['is_admin'] !== 1) {
+        $acessoExpiraEm = $sessao['acesso_expira_em'] ?? null;
 
-    // Bloqueia usuário com dias zerados ou nulos (exceto admins)
-    if (!isset($sessao['dias_acesso']) || $sessao['dias_acesso'] <= 0) {
-        if (!isset($sessao['is_admin']) || $sessao['is_admin'] != 1) {
-            return ['expired' => true, 'usuario_id' => $sessao['usuario_id'], 'email' => $sessao['email'], 'dias_acesso' => $sessao['dias_acesso'] ?? 0, 'is_admin' => $sessao['is_admin'] ?? 0];
+        if (!empty($acessoExpiraEm)) {
+            $agora = new DateTime();
+            $expira = new DateTime($acessoExpiraEm);
+
+            if ($expira <= $agora) {
+                try {
+                    db()->prepare('UPDATE usuarios SET dias_acesso = 0 WHERE id = ?')->execute([(int)$sessao['usuario_id']]);
+                    db()->prepare('UPDATE sessoes SET revogada = 1 WHERE usuario_id = ? AND revogada = 0')->execute([(int)$sessao['usuario_id']]);
+                } catch (\Throwable $e) {
+                    // Falha silenciosa: não impede o bloqueio
+                }
+
+                return ['expired' => true, 'usuario_id' => $sessao['usuario_id'], 'email' => $sessao['email'], 'dias_acesso' => 0, 'is_admin' => 0];
+            }
+
+            // Campo informativo para o frontend/admin: dias restantes
+            $restanteSeg = strtotime($acessoExpiraEm) - time();
+            $sessao['dias_acesso'] = max(1, (int)ceil($restanteSeg / 86400));
+        } else {
+            // Compatibilidade: se não há data e dias <= 0, bloqueia.
+            if (isset($sessao['dias_acesso']) && $sessao['dias_acesso'] !== null && (int)$sessao['dias_acesso'] <= 0) {
+                return ['expired' => true, 'usuario_id' => $sessao['usuario_id'], 'email' => $sessao['email'], 'dias_acesso' => 0, 'is_admin' => 0];
+            }
+
+            // Sem data e sem dias definidos => acesso ilimitado
+            if (!isset($sessao['dias_acesso']) || $sessao['dias_acesso'] === null) {
+                $sessao['dias_acesso'] = null;
+            }
         }
     }
 

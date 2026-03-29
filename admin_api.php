@@ -50,7 +50,14 @@ switch ($action) {
     // ---- Lista todos os usuários ----
     case 'list_users':
         $stmt = db()->query('
-            SELECT id, email, ativo, is_admin, dias_acesso, created_at,
+            SELECT id, email, ativo, is_admin,
+                   CASE
+                       WHEN is_admin = 1 THEN NULL
+                       WHEN acesso_expira_em IS NULL THEN NULL
+                       ELSE GREATEST(0, CEIL(TIMESTAMPDIFF(SECOND, NOW(), acesso_expira_em) / 86400))
+                   END AS dias_acesso,
+                   acesso_expira_em,
+                   created_at,
                    (SELECT MAX(created_at) FROM sessoes WHERE usuario_id = u.id AND revogada = 0 AND expires_at > NOW()) AS ultimo_acesso,
                    (SELECT COUNT(*) FROM sessoes WHERE usuario_id = u.id AND revogada = 0 AND expires_at > NOW() AND created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)) AS is_online
             FROM usuarios u
@@ -110,18 +117,40 @@ switch ($action) {
             break;
         }
         
-        // Se está definindo dias, atualiza e revoga sessões para forçar revalidação
-        if ($dias !== null && $dias >= 0) {
-            db()->prepare('UPDATE usuarios SET dias_acesso = ? WHERE id = ?')->execute([$dias > 0 ? $dias : null, $uid]);
-            
-            // Se bloqueou (dias = 0), revoga todas as sessões
-            if ($dias === 0) {
-                db()->prepare('UPDATE sessoes SET revogada = 1 WHERE usuario_id = ? AND revogada = 0')->execute([$uid]);
+        // Atualiza validade no usuário e revoga sessões para revalidação
+        if ($dias === null) {
+            // Null = ilimitado
+            db()->prepare('UPDATE usuarios SET dias_acesso = NULL, acesso_expira_em = NULL WHERE id = ?')->execute([$uid]);
+            db()->prepare('UPDATE sessoes SET revogada = 1 WHERE usuario_id = ? AND revogada = 0')->execute([$uid]);
+            db()->prepare('UPDATE sessoes SET user_expires_at = NULL WHERE usuario_id = ?')->execute([$uid]);
+        } elseif ($dias >= 0) {
+            $acessoExpiraEm = null;
+            if ($dias > 0) {
+                $acessoExpiraEm = date('Y-m-d H:i:s', time() + ($dias * 24 * 60 * 60));
+            } elseif ($dias === 0) {
+                $acessoExpiraEm = date('Y-m-d H:i:s');
             }
+
+            db()->prepare('UPDATE usuarios SET dias_acesso = ?, acesso_expira_em = ? WHERE id = ?')->execute([$dias, $acessoExpiraEm, $uid]);
+
+            // Revoga sessões sempre que dias for alterado (reseta validade imediatamente)
+            db()->prepare('UPDATE sessoes SET revogada = 1 WHERE usuario_id = ? AND revogada = 0')->execute([$uid]);
+
+            // Se o admin está redefinindo dias, limpa âncoras antigas de expiração
+            db()->prepare('UPDATE sessoes SET user_expires_at = NULL WHERE usuario_id = ?')->execute([$uid]);
         }
         
-        // Busca o valor atualizado
-        $stmt = db()->prepare('SELECT dias_acesso FROM usuarios WHERE id = ?');
+        // Busca o valor atualizado (dias restantes)
+        $stmt = db()->prepare('
+            SELECT
+                CASE
+                    WHEN is_admin = 1 THEN NULL
+                    WHEN acesso_expira_em IS NULL THEN NULL
+                    ELSE GREATEST(0, CEIL(TIMESTAMPDIFF(SECOND, NOW(), acesso_expira_em) / 86400))
+                END AS dias_acesso
+            FROM usuarios
+            WHERE id = ?
+        ');
         $stmt->execute([$uid]);
         $novoDias = $stmt->fetchColumn();
         

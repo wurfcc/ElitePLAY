@@ -43,8 +43,9 @@ if (isset($usuario_logado['expired']) && $usuario_logado['expired'] === true) {
     exit;
 }
 
-// Bloqueia usuário com dias zerados ou nulos (exceto admins)
-if (!isset($usuario_logado['dias_acesso']) || $usuario_logado['dias_acesso'] <= 0) {
+// Bloqueia usuário com dias zerados (exceto admins)
+// Null representa acesso ilimitado.
+if (isset($usuario_logado['dias_acesso']) && $usuario_logado['dias_acesso'] !== null && $usuario_logado['dias_acesso'] <= 0) {
     if (!isset($usuario_logado['is_admin']) || $usuario_logado['is_admin'] != 1) {
         header('Location: pagamento.php');
         exit;

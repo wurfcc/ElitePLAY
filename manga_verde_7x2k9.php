@@ -69,15 +69,32 @@ try {
     $pdo = db();
 
     // Verifica se usuário já existe
-    $stmt = $pdo->prepare('SELECT id, dias_acesso FROM usuarios WHERE email = ?');
+    $stmt = $pdo->prepare('SELECT id, dias_acesso, acesso_expira_em FROM usuarios WHERE email = ?');
     $stmt->execute([$email]);
     $usuario = $stmt->fetch();
 
     if ($usuario) {
-        // Usuário existe - soma os dias
-        $novosDias = $usuario['dias_acesso'] + $dias;
-        $stmt = $pdo->prepare('UPDATE usuarios SET dias_acesso = ? WHERE id = ?');
-        $stmt->execute([$novosDias, $usuario['id']]);
+        // Usuário existe - soma no acesso_expira_em (baseado na data atual ou validade futura)
+        $agora = new DateTime();
+        $base = $agora;
+        if (!empty($usuario['acesso_expira_em'])) {
+            $expAtual = new DateTime($usuario['acesso_expira_em']);
+            if ($expAtual > $agora) {
+                $base = $expAtual;
+            }
+        }
+
+        $novaExpiracao = clone $base;
+        $novaExpiracao->modify('+' . (int)$dias . ' days');
+
+        $novosDias = (int)ceil(($novaExpiracao->getTimestamp() - time()) / 86400);
+        if ($novosDias < 0) $novosDias = 0;
+
+        $stmt = $pdo->prepare('UPDATE usuarios SET dias_acesso = ?, acesso_expira_em = ? WHERE id = ?');
+        $stmt->execute([$novosDias, $novaExpiracao->format('Y-m-d H:i:s'), $usuario['id']]);
+
+        // Revoga sessões para aplicar nova validade imediatamente
+        $pdo->prepare('UPDATE sessoes SET revogada = 1 WHERE usuario_id = ? AND revogada = 0')->execute([$usuario['id']]);
 
         http_response_code(200);
         echo json_encode([
@@ -86,12 +103,16 @@ try {
             'email' => $email,
             'plan' => $nomePlano,
             'days_added' => $dias,
-            'total_days' => $novosDias
+            'total_days' => $novosDias,
+            'expires_at' => $novaExpiracao->format('Y-m-d H:i:s')
         ]);
     } else {
         // Novo usuário - cria com dias de acesso + nome + whatsapp
-        $stmt = $pdo->prepare('INSERT INTO usuarios (email, nome, whatsapp, ativo, dias_acesso) VALUES (?, ?, ?, 1, ?)');
-        $stmt->execute([$email, $nome, $whatsapp, $dias]);
+        $expiraEm = new DateTime();
+        $expiraEm->modify('+' . (int)$dias . ' days');
+
+        $stmt = $pdo->prepare('INSERT INTO usuarios (email, nome, whatsapp, ativo, dias_acesso, acesso_expira_em) VALUES (?, ?, ?, 1, ?, ?)');
+        $stmt->execute([$email, $nome, $whatsapp, $dias, $expiraEm->format('Y-m-d H:i:s')]);
 
         http_response_code(200);
         echo json_encode([
@@ -101,7 +122,8 @@ try {
             'nome' => $nome,
             'whatsapp' => $whatsapp,
             'plan' => $nomePlano,
-            'days' => $dias
+            'days' => $dias,
+            'expires_at' => $expiraEm->format('Y-m-d H:i:s')
         ]);
     }
 

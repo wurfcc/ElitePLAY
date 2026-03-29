@@ -1,5 +1,11 @@
 <?php require_once __DIR__ . '/middleware.php';
 $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 1;
+$viewerProfile = [
+    'email' => $usuario_logado['email'] ?? '',
+    'is_admin' => (int)($usuario_logado['is_admin'] ?? 0),
+    'dias_acesso' => isset($usuario_logado['dias_acesso']) ? ($usuario_logado['dias_acesso'] === null ? null : (int)$usuario_logado['dias_acesso']) : null,
+    'acesso_expira_em' => $usuario_logado['acesso_expira_em'] ?? null,
+];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -122,6 +128,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             cursor: pointer;
             text-decoration: none;
             transition: all 0.2s;
+            appearance: none;
         }
 
         .admin-link:hover, .user-icon:hover {
@@ -172,6 +179,121 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             background-color: rgba(245, 192, 11, 0.18);
             box-shadow: 0 0 0 3px rgba(245, 192, 11, 0.12);
             color: #f5c00b;
+        }
+
+        .profile-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9998;
+            background: rgba(5, 7, 10, 0.86);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .profile-modal-overlay.open { display: flex; }
+
+        .profile-modal {
+            width: min(520px, 100%);
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: linear-gradient(180deg, rgba(12, 16, 27, 0.98) 0%, rgba(8, 12, 20, 0.98) 100%);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+            overflow: hidden;
+        }
+
+        .profile-modal-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 18px 18px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .profile-modal-title {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.2px;
+        }
+
+        .profile-modal-subtitle {
+            margin: 6px 0 0;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .profile-modal-close {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .profile-modal-body {
+            padding: 16px 18px 18px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .profile-info-item {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 12px;
+        }
+
+        .profile-info-key {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            margin-bottom: 7px;
+        }
+
+        .profile-info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-light);
+            word-break: break-word;
+        }
+
+        .profile-status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            border: 1px solid transparent;
+        }
+
+        .profile-status-badge.vitalicio {
+            color: #fbbf24;
+            background: rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.22);
+        }
+
+        .profile-status-badge.alerta {
+            color: #fca5a5;
+            background: rgba(239, 68, 68, 0.12);
+            border-color: rgba(239, 68, 68, 0.25);
+        }
+
+        .profile-status-badge.ativo {
+            color: #4ade80;
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.2);
         }
 
         .search-container {
@@ -960,6 +1082,26 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             .watch-premium-button {
                 font-size: 1.1rem;
             }
+
+            .profile-modal-overlay {
+                padding: 10px;
+            }
+
+            .profile-modal {
+                border-radius: 14px;
+            }
+
+            .profile-modal-header {
+                padding: 14px 14px 12px;
+            }
+
+            .profile-modal-title {
+                font-size: 19px;
+            }
+
+            .profile-modal-body {
+                padding: 12px 14px 14px;
+            }
         }
     </style>
 </head>
@@ -999,12 +1141,12 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
 <path d="M15 11.25C15.4142 11.25 15.75 11.5858 15.75 12C15.75 12.4142 15.4142 12.75 15 12.75H4.02744L5.98809 14.4306C6.30259 14.7001 6.33901 15.1736 6.06944 15.4881C5.79988 15.8026 5.3264 15.839 5.01191 15.5694L1.51191 12.5694C1.34567 12.427 1.25 12.2189 1.25 12C1.25 11.7811 1.34567 11.573 1.51191 11.4306L5.01191 8.43056C5.3264 8.16099 5.79988 8.19741 6.06944 8.51191C6.33901 8.8264 6.30259 9.29988 5.98809 9.56944L4.02744 11.25H15Z" fill="#ffffff"/>
 </svg>
             </a>
-            <div class="user-icon">
+            <button type="button" class="user-icon" title="Minha conta" onclick="openProfileModal()" aria-label="Abrir informações da conta">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path fill-rule="evenodd" clip-rule="evenodd" d="M12 1.25C9.37666 1.25 7.25001 3.37665 7.25001 6C7.25001 8.62335 9.37666 10.75 12 10.75C14.6234 10.75 16.75 8.62335 16.75 6C16.75 3.37665 14.6234 1.25 12 1.25ZM8.75001 6C8.75001 4.20507 10.2051 2.75 12 2.75C13.7949 2.75 15.25 4.20507 15.25 6C15.25 7.79493 13.7949 9.25 12 9.25C10.2051 9.25 8.75001 7.79493 8.75001 6Z" fill="#ffffff"/>
 <path fill-rule="evenodd" clip-rule="evenodd" d="M12 12.25C9.68646 12.25 7.55494 12.7759 5.97546 13.6643C4.4195 14.5396 3.25001 15.8661 3.25001 17.5L3.24995 17.602C3.24882 18.7638 3.2474 20.222 4.52642 21.2635C5.15589 21.7761 6.03649 22.1406 7.22622 22.3815C8.41927 22.6229 9.97424 22.75 12 22.75C14.0258 22.75 15.5808 22.6229 16.7738 22.3815C17.9635 22.1406 18.8441 21.7761 19.4736 21.2635C20.7526 20.222 20.7512 18.7638 20.7501 17.602L20.75 17.5C20.75 15.8661 19.5805 14.5396 18.0246 13.6643C16.4451 12.7759 14.3136 12.25 12 12.25ZM4.75001 17.5C4.75001 16.6487 5.37139 15.7251 6.71085 14.9717C8.02681 14.2315 9.89529 13.75 12 13.75C14.1047 13.75 15.9732 14.2315 17.2892 14.9717C18.6286 15.7251 19.25 16.6487 19.25 17.5C19.25 18.8078 19.2097 19.544 18.5264 20.1004C18.1559 20.4022 17.5365 20.6967 16.4762 20.9113C15.4193 21.1252 13.9742 21.25 12 21.25C10.0258 21.25 8.58075 21.1252 7.5238 20.9113C6.46354 20.6967 5.84413 20.4022 5.4736 20.1004C4.79033 19.544 4.75001 18.8078 4.75001 17.5Z" fill="#ffffff"/>
 </svg>
-            </div>
+            </button>
         </div>
     </header>
 
@@ -1034,6 +1176,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
 
     <script>
         const isAdmin = <?php echo $isAdmin ? 'true' : 'false'; ?>;
+        const currentViewer = <?php echo json_encode($viewerProfile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
         const MAIN_CHANNELS_APIS = {
             noticias70: {
                 key: 'noticias70',
@@ -1077,6 +1220,97 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             return currentChannelsSource === MAIN_CHANNELS_APIS.bugoumods.key
                 ? MAIN_CHANNELS_APIS.bugoumods
                 : MAIN_CHANNELS_APIS.noticias70;
+        }
+
+        function parseDateTime(dateStr) {
+            if (!dateStr) return null;
+            const parsed = new Date(String(dateStr).replace(' ', 'T'));
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        function formatDateTimeBr(dateStr) {
+            const d = parseDateTime(dateStr);
+            if (!d) return '—';
+            return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function getAccountStatusInfo(viewer) {
+            if (!viewer) {
+                return { type: 'Conta', expiresText: '—', badgeText: '—', badgeClass: 'ativo' };
+            }
+
+            if (Number(viewer.is_admin) === 1) {
+                return {
+                    type: 'Admin',
+                    expiresText: 'Vitalício',
+                    badgeText: 'Admin',
+                    badgeClass: 'vitalicio'
+                };
+            }
+
+            const expDate = parseDateTime(viewer.acesso_expira_em);
+            if (!expDate) {
+                return {
+                    type: 'Usuário Vitalício',
+                    expiresText: 'Vitalício',
+                    badgeText: 'Vitalício',
+                    badgeClass: 'vitalicio'
+                };
+            }
+
+            const now = new Date();
+            const msDiff = expDate.getTime() - now.getTime();
+            const daysLeft = Math.ceil(msDiff / 86400000);
+
+            let reminder = '';
+            if (daysLeft > 0 && daysLeft <= 3) {
+                reminder = daysLeft === 1 ? ' (Falta 1 dia)' : ` (Faltam ${daysLeft} dias)`;
+            }
+
+            if (daysLeft <= 0) {
+                return {
+                    type: 'Usuário',
+                    expiresText: `${formatDateTimeBr(viewer.acesso_expira_em)} (Vencido)`,
+                    badgeText: 'Vencido',
+                    badgeClass: 'alerta'
+                };
+            }
+
+            return {
+                type: 'Usuário',
+                expiresText: `${formatDateTimeBr(viewer.acesso_expira_em)}${reminder}`,
+                badgeText: daysLeft <= 3 ? (daysLeft === 1 ? 'Falta 1 dia' : `Faltam ${daysLeft} dias`) : 'Ativo',
+                badgeClass: daysLeft <= 3 ? 'alerta' : 'ativo'
+            };
+        }
+
+        function openProfileModal() {
+            const modal = document.getElementById('profile-modal-overlay');
+            if (!modal) return;
+
+            const info = getAccountStatusInfo(currentViewer);
+            const emailEl = document.getElementById('profile-info-email');
+            const typeEl = document.getElementById('profile-info-type');
+            const expiresEl = document.getElementById('profile-info-expires');
+            const badgeEl = document.getElementById('profile-info-status-badge');
+            const subtitleEl = document.getElementById('profile-modal-subtitle');
+
+            if (emailEl) emailEl.textContent = currentViewer?.email || '—';
+            if (typeEl) typeEl.textContent = info.type;
+            if (expiresEl) expiresEl.textContent = info.expiresText;
+            if (subtitleEl) subtitleEl.textContent = 'Informações do seu acesso na plataforma';
+
+            if (badgeEl) {
+                badgeEl.className = `profile-status-badge ${info.badgeClass}`;
+                badgeEl.textContent = info.badgeText;
+            }
+
+            modal.classList.add('open');
+        }
+
+        function closeProfileModal() {
+            const modal = document.getElementById('profile-modal-overlay');
+            if (modal) modal.classList.remove('open');
         }
 
         function updateChannelsSourceToggleUI() {
@@ -2570,10 +2804,45 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
                 if (scrollPos) window.scrollTo(0, parseInt(scrollPos));
                 sessionStorage.removeItem('eliteplay_from_assistir');
             }
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeProfileModal();
+                }
+            });
             updateChannelsSourceToggleUI();
             fetchChannels();
         };
     </script>
+
+    <div id="profile-modal-overlay" class="profile-modal-overlay" onclick="if(event.target===this)closeProfileModal()">
+        <div class="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
+            <div class="profile-modal-header">
+                <div>
+                    <h3 class="profile-modal-title" id="profile-modal-title">Minha Conta</h3>
+                    <p class="profile-modal-subtitle" id="profile-modal-subtitle">Informações de acesso</p>
+                </div>
+                <button type="button" class="profile-modal-close" onclick="closeProfileModal()" aria-label="Fechar">×</button>
+            </div>
+            <div class="profile-modal-body">
+                <div class="profile-info-item">
+                    <span class="profile-info-key">E-mail</span>
+                    <span class="profile-info-value" id="profile-info-email"></span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-key">Tipo de conta</span>
+                    <span class="profile-info-value" id="profile-info-type"></span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-key">Vencimento</span>
+                    <span class="profile-info-value" id="profile-info-expires"></span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-key">Status</span>
+                    <span class="profile-status-badge" id="profile-info-status-badge"></span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- ====================================================
          Modal de Sessão Expirada (outro dispositivo logou)

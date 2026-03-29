@@ -235,6 +235,41 @@ $csrfToken = csrf_token();
         .badge-green  { background: rgba(34,197,94,0.1);  color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
         .badge-red    { background: rgba(239,68,68,0.1);  color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
         .badge-blue   { background: rgba(59,130,246,0.12); color: var(--primary); border: 1px solid rgba(59,130,246,0.2); }
+        .badge-amber  { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.24); }
+        .badge-slate  { background: rgba(148, 163, 184, 0.12); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.24); }
+
+        .user-row { cursor: pointer; }
+        .user-row td { transition: background 0.18s ease; }
+        .user-row:hover td { background: rgba(59,130,246,0.06); }
+
+        .user-details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .user-detail-item {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .user-detail-item .k {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .user-detail-item .v {
+            font-size: 14px;
+            color: var(--text);
+            font-weight: 600;
+            word-break: break-word;
+        }
 
         .btn {
             display: inline-flex;
@@ -827,6 +862,10 @@ $csrfToken = csrf_token();
             }
             .modal-footer .btn { width: 100%; justify-content: center; }
 
+            .user-details-grid {
+                grid-template-columns: 1fr;
+            }
+
             .ovr-suggestions { max-height: 180px; }
             .ovr-suggestion-item { font-size: 14px; padding: 10px 12px; }
         }
@@ -1007,6 +1046,22 @@ $csrfToken = csrf_token();
     </div>
 </div>
 
+<!-- ============ MODAL DETALHES USUÁRIO ============ -->
+<div class="modal-overlay" id="modal-usuario-detalhes" onclick="if(event.target===this)fecharModalDetalhesUsuario()">
+    <div class="modal" style="max-width:680px;">
+        <div class="modal-header">
+            <h3>Detalhes do Usuário</h3>
+            <p id="usuario-detalhes-subtitle">Informações completas da conta</p>
+        </div>
+        <div class="modal-body">
+            <div class="user-details-grid" id="usuario-detalhes-grid"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="fecharModalDetalhesUsuario()">Fechar</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const CSRF_TOKEN = '<?php echo $csrfToken; ?>';
     // ====================================================
@@ -1062,10 +1117,56 @@ $csrfToken = csrf_token();
     // ====================================================
     // Usuários
     // ====================================================
+    let usuariosCache = [];
+
+    function getTipoAcessoUsuario(u) {
+        if (u.is_admin) return { label: 'Admin', badge: 'badge-blue', isExpired: false };
+        if (u.dias_acesso === null || u.dias_acesso === '') return { label: 'Vitalício', badge: 'badge-amber', isExpired: false };
+        const dias = Number(u.dias_acesso || 0);
+        if (dias <= 0) return { label: 'Vencido', badge: 'badge-red', isExpired: true };
+        return { label: `${dias} dia${dias === 1 ? '' : 's'}`, badge: 'badge-green', isExpired: false };
+    }
+
+    function formatDateTime(v) {
+        if (!v) return '—';
+        const d = new Date(String(v).replace(' ', 'T'));
+        if (Number.isNaN(d.getTime())) return String(v);
+        return d.toLocaleString('pt-BR');
+    }
+
+    function abrirModalDetalhesUsuario(userId) {
+        const u = usuariosCache.find(x => Number(x.id) === Number(userId));
+        if (!u) return;
+
+        const tipoAcesso = getTipoAcessoUsuario(u);
+        const grid = document.getElementById('usuario-detalhes-grid');
+        const subtitle = document.getElementById('usuario-detalhes-subtitle');
+
+        subtitle.textContent = `${u.email} • ${tipoAcesso.label}`;
+
+        grid.innerHTML = `
+            <div class="user-detail-item"><span class="k">E-mail</span><span class="v">${u.email}</span></div>
+            <div class="user-detail-item"><span class="k">Tipo de acesso</span><span class="v">${tipoAcesso.label}</span></div>
+            <div class="user-detail-item"><span class="k">Status da conta</span><span class="v">${u.ativo ? 'Ativo' : 'Bloqueado'}</span></div>
+            <div class="user-detail-item"><span class="k">Online</span><span class="v">${u.is_online ? 'Sim' : 'Não'}</span></div>
+            <div class="user-detail-item"><span class="k">Dias restantes</span><span class="v">${u.dias_acesso === null ? 'Vitalício' : Number(u.dias_acesso || 0)}</span></div>
+            <div class="user-detail-item"><span class="k">Expira em</span><span class="v">${formatDateTime(u.acesso_expira_em)}</span></div>
+            <div class="user-detail-item"><span class="k">Último acesso</span><span class="v">${formatDateTime(u.ultimo_acesso)}</span></div>
+            <div class="user-detail-item"><span class="k">Cadastrado em</span><span class="v">${formatDateTime(u.created_at)}</span></div>
+        `;
+
+        document.getElementById('modal-usuario-detalhes').classList.add('open');
+    }
+
+    function fecharModalDetalhesUsuario() {
+        document.getElementById('modal-usuario-detalhes').classList.remove('open');
+    }
+
     async function carregarUsuarios() {
         const wrap = document.getElementById('usuarios-table-wrap');
         wrap.innerHTML = '<div class="empty-state"><p>Carregando...</p></div>';
         const users = await fetch('admin_api.php?action=list_users').then(r=>r.json()).catch(()=>[]);
+        usuariosCache = Array.isArray(users) ? users : [];
 
         if (!users.length) {
             wrap.innerHTML = '<div class="empty-state"><p>Nenhum usuário cadastrado.</p></div>';
@@ -1073,7 +1174,7 @@ $csrfToken = csrf_token();
         }
 
         let rows = users.map(u => `
-            <tr data-id="${u.id}">
+            <tr data-id="${u.id}" class="user-row" onclick="abrirModalDetalhesUsuario(${u.id})">
                 <td>
                     ${u.email}
                     ${u.is_admin ? '<span class="badge badge-blue" style="margin-left:8px;">ADMIN</span>' : ''}
@@ -1083,11 +1184,15 @@ $csrfToken = csrf_token();
                     <span class="badge ${u.ativo ? 'badge-green' : 'badge-red'}">
                         ${u.ativo ? '● Ativo' : '○ Bloqueado'}
                     </span>
+                    <span class="badge ${getTipoAcessoUsuario(u).badge}" style="margin-left:6px;">
+                        ${getTipoAcessoUsuario(u).label}
+                    </span>
                 </td>
                 <td>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <input type="number" min="0" value="${u.dias_acesso ?? ''}" 
                                placeholder="∞" style="width:70px; padding:6px 8px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px;"
+                               onclick="event.stopPropagation()"
                                onchange="salvarDiasAcesso(${u.id}, this.value, this)"
                                ${u.is_admin ? 'disabled' : ''}>
                         <span style="font-size:12px; color:var(--text-muted);">dias</span>
@@ -1096,10 +1201,10 @@ $csrfToken = csrf_token();
                 <td style="font-size:12px; color:var(--text-muted);">${u.created_at?.slice(0,10) || '—'}</td>
                 <td>
                     ${!u.is_admin ? `
-                        <button class="btn btn-ghost btn-sm" onclick="toggleUsuario(${u.id}, this)">
+                        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toggleUsuario(${u.id}, this)">
                             ${u.ativo ? 'Bloquear' : 'Ativar'}
                         </button>
-                        <button class="btn btn-danger btn-sm" onclick="deletarUsuario(${u.id}, '${u.email}', this)" style="margin-left:6px;">Remover</button>
+                        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletarUsuario(${u.id}, '${u.email}', this)" style="margin-left:6px;">Remover</button>
                     ` : '<span style="color:var(--text-muted); font-size:12px;">—</span>'}
                 </td>
             </tr>

@@ -21,11 +21,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 $sessao = validar_sessao_cookie();
 
-if ($sessao === null) {
+if ($sessao === null || (!empty($sessao['expired']) && $sessao['expired'] === true)) {
     // Sessão inválida, expirada ou revogada (pode ser que outro dispositivo logou)
     echo json_encode([
         'valid'  => false,
-        'reason' => 'session_invalid',
+        'reason' => $sessao === null ? 'session_invalid' : 'access_expired',
     ]);
     exit;
 }

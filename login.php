@@ -425,6 +425,7 @@ $csrf = csrf_token();
             const alertError = document.getElementById('alert-error');
             const alertSuccess = document.getElementById('alert-success');
             const alertMsg = document.getElementById('alert-msg');
+            const successMsg = document.querySelector('#alert-success strong');
 
             // Esconde alertas anteriores
             alertError.classList.remove('show');
@@ -453,8 +454,10 @@ $csrf = csrf_token();
                 if (response && response.ok) {
                     const data = await response.json().catch(() => null);
                     if (data && data.success) {
+                        if (successMsg && data.message) successMsg.textContent = data.message;
                         alertSuccess.classList.add('show');
-                        setTimeout(() => { window.location.href = 'index.php'; }, 1500);
+                        const nextUrl = data.redirect || 'index.php';
+                        setTimeout(() => { window.location.href = nextUrl; }, 1500);
                         return;
                     }
                 }
@@ -475,6 +478,8 @@ $csrf = csrf_token();
         document.getElementById('email').addEventListener('input', () => {
             document.getElementById('alert-error').classList.remove('show');
             document.getElementById('alert-success').classList.remove('show');
+            const successMsg = document.querySelector('#alert-success strong');
+            if (successMsg) successMsg.textContent = 'Acesso autorizado! Redirecionando...';
         });
     </script>
 
