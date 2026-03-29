@@ -199,7 +199,7 @@ $email = $usuario_logado['email'] ?? 'Usuário';
 <body>
     <div class="container">
         <div class="logo">
-            <h1>ElitePLAY</h1>
+            <img src="imagens/elitelogo.webp" alt="ElitePLAY" style="height: 50px;">
             <p>Seu IPTV Premium</p>
         </div>
 

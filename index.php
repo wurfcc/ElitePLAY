@@ -943,7 +943,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
     <header>
         <div style="display: flex; align-items: center; gap: 15px;">
             <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-            <div class="logo">Elite<span>PLAY</span></div>
+            <img src="imagens/elitelogo.webp" alt="ElitePLAY" class="logo" style="height: 35px;">
         </div>
         <div class="search-container">
             <input type="text" class="search-input" placeholder="Pesquisar canais ou eventos...">
@@ -1005,9 +1005,11 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
         const localDateYmd = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         
         const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+        const GAME_CARDS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 horas
         const CACHE_KEYS = {
             channels: 'eliteplay_channels',
-            jogos: 'eliteplay_jogos'
+            jogos: 'eliteplay_jogos',
+            gameCardsHTML: 'eliteplay_game_cards_html'
         };
 
         let allChannels = [];
@@ -1018,6 +1020,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
         let lastScrapedScores = [];
         let dataLoadedFromCache = false;
         let isCategoryMode = false;
+        let gameCardsLoadedFromCache = false;
 
         // Cache utilities
         function getCache(key) {
@@ -1036,6 +1039,35 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
         function setCache(key, data) {
             try {
                 sessionStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+            } catch {}
+        }
+
+        // Game Cards HTML Cache (24 hours)
+        function saveGameCardsCache(html) {
+            try {
+                localStorage.setItem(CACHE_KEYS.gameCardsHTML, JSON.stringify({
+                    html: html,
+                    timestamp: Date.now()
+                }));
+            } catch {}
+        }
+
+        function loadGameCardsCache() {
+            try {
+                const cached = localStorage.getItem(CACHE_KEYS.gameCardsHTML);
+                if (!cached) return null;
+                const { html, timestamp } = JSON.parse(cached);
+                if (Date.now() - timestamp > GAME_CARDS_CACHE_TTL) {
+                    localStorage.removeItem(CACHE_KEYS.gameCardsHTML);
+                    return null;
+                }
+                return html;
+            } catch { return null; }
+        }
+
+        function clearGameCardsCache() {
+            try {
+                localStorage.removeItem(CACHE_KEYS.gameCardsHTML);
             } catch {}
         }
 
@@ -1271,12 +1303,11 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
 
             const OVERRIDE_REMOVE_ORIGINAL_KEY = '__ORIGINAL_API__';
             const adminOverrides = window.adminJogosOverrides || {};
-            console.log('[INDEX] adminOverrides keys:', Object.keys(adminOverrides), 'jogoId:', jogoId);
             const overrideList = jogoId && Array.isArray(adminOverrides[jogoId]) ? adminOverrides[jogoId] : [];
             const hasAdminOverride = overrideList.length > 0;
-            console.log('[INDEX] hasAdminOverride:', hasAdminOverride, 'overrideList:', overrideList);
 
             let detectedStreams = [];
+            let matchedChannel = null;
             const channelsToUse = (typeof window.channelsForGames !== 'undefined' && window.channelsForGames.length > 0)
                 ? window.channelsForGames
                 : allChannels;
@@ -1346,7 +1377,6 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             }
 
             let finalStreams = [...detectedStreams];
-            console.log('[DEBUG] jogoId:', jogoId, 'hasOverride:', hasAdminOverride, 'detectedStreams length:', detectedStreams.length);
 
             // se tem override, processa com controle total
             if (hasAdminOverride && typeof channelsToUse !== 'undefined') {
@@ -1440,12 +1470,12 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
                 }
             }
 
-            console.log('[DEBUG] finalStreams:', finalStreams.length, finalStreams.map(s => s.name));
-
-            // Usa detectedStreams (todas as streams do canal) ao invés de finalStreams (que pode ser filtrado pelo override)
-            if (detectedStreams.length > 0) {
-                gameStreamsStr = btoa(unescape(encodeURIComponent(JSON.stringify(detectedStreams))));
+            // Usa finalStreams para respeitar regras de override (adicionar/remover canais/qualidades)
+            if (finalStreams.length > 0) {
+                gameStreamsStr = btoa(unescape(encodeURIComponent(JSON.stringify(finalStreams))));
             }
+
+            const initialPlayerUrl = finalStreams.length > 0 ? finalStreams[0].url : playerUrlOpcao1;
 
             const competition = jogo.scrapedLeague || jogo.data?.league || 'Futebol';
             const competitionSlug = slugify(competition);
@@ -1522,7 +1552,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
                                     return `${hh}h${mi}`;
                                 })()}</span>
                             </div>
-                            ${!isFinished ? `<button onclick="enviarParaPlayer('${playerUrlOpcao1}', '${safeTitle}', '${jogo.image}', '${originalEmbedTvUrl}', '', '${gameStreamsStr}')" class="watch-premium-button" style="flex: 1;">Assistir Agora</button>` : ''}
+                            ${!isFinished ? `<button onclick="enviarParaPlayer('${initialPlayerUrl}', '${safeTitle}', '${jogo.image}', '${originalEmbedTvUrl}', '', '${gameStreamsStr}')" class="watch-premium-button" style="flex: 1;">Assistir Agora</button>` : ''}
                         </div>
                     </div>
                 </div>
@@ -1533,18 +1563,15 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             try {
                 const fromAssistir = sessionStorage.getItem('eliteplay_from_assistir') === '1';
                 
-                // Puxa as 2 fontes em paralelo
-                let res70, resEmbed;
+                // 1. Primeiro carrega embedtv (mais importante para jogos)
+                const resEmbed = await fetchWithCache(embedtvChannelsUrl, CACHE_KEYS.channels + '_embed').catch(() => null);
+
+                // 2. Depois carrega 70noticias em background
+                let res70;
                 if (fromAssistir) {
-                    [res70, resEmbed] = await Promise.all([
-                        fetchWithCache(apiUrl, CACHE_KEYS.channels).catch(() => ({})),
-                        fetchWithCache(embedtvChannelsUrl, CACHE_KEYS.channels + '_embed').catch(() => null)
-                    ]);
+                    res70 = await fetchWithCache(apiUrl, CACHE_KEYS.channels).catch(() => ({}));
                 } else {
-                    [res70, resEmbed] = await Promise.all([
-                        fetchWithCache(apiUrl, CACHE_KEYS.channels).catch(() => ({})),
-                        fetchWithCache(embedtvChannelsUrl, CACHE_KEYS.channels + '_embed').catch(() => null)
-                    ]);
+                    res70 = await fetchWithCache(apiUrl, CACHE_KEYS.channels).catch(() => ({}));
                 }
 
                 let groupedChannels = {};
@@ -1778,13 +1805,20 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
                 lastScrapedScores = scraped;
                 const gamesWithScores = matchGameScores(allJogos, scraped);
                 allJogosProcessed = gamesWithScores;
-                renderHorizontalJogos(gamesWithScores);
+                
+                // Se já carregou do cache, atualiza apenas os placares no DOM
+                if (gameCardsLoadedFromCache) {
+                    updateScoresInDOM(gamesWithScores);
+                } else {
+                    renderHorizontalJogos(gamesWithScores);
+                }
+                
                 const activeBtn = document.querySelector('.cat-btn.active');
                 if (activeBtn && activeBtn.innerText.includes('JOGOS')) {
                     renderMainGridJogos(gamesWithScores, activeBtn);
                 }
             }
-        }, 15000);
+        }, 30000);
 
         // Função auxiliar para comparar nomes (remove espaços, traços, deixa tudo minúsculo e iguala canais base ao canal 1)
         const normalizeName = (name) => {
@@ -1817,7 +1851,7 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             return n;
         };
 
-        function renderHorizontalJogos(jogos) {
+        function renderHorizontalJogos(jogos, forceRefresh = false) {
             const container = document.getElementById('jogos-section');
             const wrapper = document.getElementById('jogos-horizontal-wrapper');
             
@@ -1825,6 +1859,18 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
             if (document.querySelector('.search-input').value.trim().length > 0) return;
 
             if (!jogos || jogos.length === 0) { container.style.display = 'none'; return; }
+
+            // Tenta carregar do cache primeiro (só na primeira vez)
+            if (!forceRefresh && !gameCardsLoadedFromCache) {
+                const cachedHTML = loadGameCardsCache();
+                if (cachedHTML) {
+                    container.style.display = 'block';
+                    wrapper.innerHTML = cachedHTML;
+                    initCarousels();
+                    gameCardsLoadedFromCache = true;
+                    return;
+                }
+            }
 
             container.style.display = 'block';
             wrapper.innerHTML = '';
@@ -1868,10 +1914,53 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
                 `;
             };
 
-            wrapper.innerHTML = renderHorizontalSection('Ao Vivo Agora', live) + 
+            const html = renderHorizontalSection('Ao Vivo Agora', live) + 
                                renderHorizontalSection('Próximos Jogos', upcoming) + 
                                renderFinishedCarousel('Jogos Encerrados', finished);
+            wrapper.innerHTML = html;
             initCarousels();
+
+            // Salva no cache após renderizar (só na primeira vez)
+            if (!gameCardsLoadedFromCache) {
+                saveGameCardsCache(html);
+                gameCardsLoadedFromCache = true;
+            }
+        }
+
+        // Atualiza apenas os placares no DOM existente (sem re-renderizar)
+        function updateScoresInDOM(gamesWithScores) {
+            gamesWithScores.forEach(jogo => {
+                const isLive = jogo.status_label === 'Ao Vivo';
+                const isFinished = jogo.status_label === 'Encerrado';
+                
+                if (!isLive && !isFinished) return;
+                
+                // Encontra o card pelo título do jogo
+                const cards = document.querySelectorAll('.game-card');
+                cards.forEach(card => {
+                    const titleEl = card.querySelector('.team-name-premium');
+                    if (!titleEl) return;
+                    
+                    const homeName = jogo.data?.teams?.home?.name || '';
+                    const awayName = jogo.data?.teams?.away?.name || '';
+                    
+                    if (titleEl.textContent.includes(homeName.split(' ')[0])) {
+                        // Atualiza score
+                        const scoreDisplay = card.querySelector('.score-premium-display');
+                        if (scoreDisplay) {
+                            const homeScore = jogo.homeScore !== undefined ? jogo.homeScore : (isLive || isFinished ? '0' : '');
+                            const awayScore = jogo.awayScore !== undefined ? jogo.awayScore : (isLive || isFinished ? '0' : '');
+                            scoreDisplay.innerHTML = `<span>${homeScore}</span><span class="score-divider">-</span><span>${awayScore}</span>`;
+                        }
+                        
+                        // Atualiza status
+                        const statusBadge = card.querySelector('.status-badge');
+                        if (statusBadge && jogo.statusText) {
+                            statusBadge.textContent = jogo.statusText;
+                        }
+                    }
+                });
+            });
         }
 
         function renderCategories(channels) {

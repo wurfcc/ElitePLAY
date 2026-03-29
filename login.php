@@ -348,9 +348,7 @@ $csrf = csrf_token();
     <div class="login-wrapper">
 
         <div class="logo-area">
-            <div class="logo">Elite<span>PLAY</span>
-                <span class="live-badge-deco">AO VIVO</span>
-            </div>
+            <img src="imagens/elitelogo.webp" alt="ElitePLAY" class="logo" style="height: 50px;">
             <p class="logo-tagline">Sua plataforma de canais premium</p>
         </div>
 
