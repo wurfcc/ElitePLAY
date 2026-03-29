@@ -383,19 +383,137 @@ $csrfToken = csrf_token();
             gap: 10px;
         }
 
+        .jogo-modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: radial-gradient(circle at 10% 90%, rgba(239, 68, 68, 0.08), transparent 40%), rgba(5, 7, 10, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .jogo-modal-panel {
+            width: 100%;
+            max-width: 720px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(180deg, rgba(12, 17, 25, 0.98) 0%, rgba(8, 12, 19, 0.98) 100%);
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            border-radius: 20px;
+            box-shadow: 0 28px 90px rgba(0, 0, 0, 0.65);
+        }
+
+        .jogo-modal-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .jogo-modal-header h3 {
+            margin: 0;
+            font-size: 32px;
+            line-height: 1.05;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #f8fafc;
+        }
+
+        .jogo-modal-header p {
+            margin: 6px 0 0;
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        .jogo-modal-close {
+            width: 36px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            background: rgba(255, 255, 255, 0.03);
+            color: #94a3b8;
+            font-size: 26px;
+            line-height: 1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .jogo-modal-close:hover {
+            background: rgba(239, 68, 68, 0.12);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.35);
+        }
+
+        .jogo-modal-body {
+            padding: 20px 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .jogo-modal-note {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.45;
+            color: #94a3b8;
+            background: rgba(15, 23, 42, 0.45);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+
+        .jogo-modal-add-btn {
+            margin-top: 4px;
+            width: fit-content;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 12px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .jogo-modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            background: rgba(2, 6, 15, 0.55);
+        }
+
         .canais-overrides-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
 
         .canal-override-item {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 8px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 10px 12px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(148,163,184,0.03) 100%);
+            border: 1px solid rgba(148, 163, 184, 0.26);
+            border-radius: 14px;
+            padding: 12px 14px;
+            transition: border-color 0.2s ease, transform 0.2s ease;
         }
 
-        .canal-override-item input {
+        .canal-override-item:hover {
+            border-color: rgba(96, 165, 250, 0.45);
+            transform: translateY(-1px);
+        }
+
+        .canal-override-item > svg { margin-top: 2px; color: #93a8cb !important; }
+
+        .canal-override-item .ovr-name {
             flex: 1;
             background: transparent;
             border: none;
@@ -406,7 +524,7 @@ $csrfToken = csrf_token();
             list-style: none;
         }
 
-        .canal-override-item input::placeholder { color: rgba(148,163,184,0.4); }
+        .canal-override-item .ovr-name::placeholder { color: rgba(148,163,184,0.4); }
 
         .canal-override-item button {
             background: none; border: none; cursor: pointer; color: var(--text-muted);
@@ -466,6 +584,51 @@ $csrfToken = csrf_token();
 
         .api-canais-info strong { color: var(--primary); display: block; margin-bottom: 4px; }
         .api-canais-info span  { color: var(--text-muted); }
+
+        .api-canais-info-modal {
+            margin-bottom: 0;
+            border-radius: 14px;
+            border-color: rgba(96, 165, 250, 0.32);
+            background: linear-gradient(90deg, rgba(30, 58, 138, 0.22) 0%, rgba(15, 23, 42, 0.75) 100%);
+            padding: 14px 16px;
+        }
+
+        .api-canais-info-modal strong {
+            margin-bottom: 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #93c5fd;
+        }
+
+        .api-canais-info-modal span {
+            display: block;
+            font-size: 16px;
+            font-weight: 700;
+            color: #e2e8f0;
+            word-break: break-word;
+        }
+
+        .ovr-remove-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .ovr-remove-row input { width: auto; flex: none; accent-color: #3b82f6; }
+
+        .ovr-help-text {
+            font-size: 12px;
+            color: rgba(148, 163, 184, 0.9);
+            margin-top: 4px;
+        }
+
+        .ovr-quality-empty {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
 
         .form-input-inline {
             width: 100%;
@@ -629,6 +792,16 @@ $csrfToken = csrf_token();
             .modal-header, .modal-body, .modal-footer { padding-left: 14px; padding-right: 14px; }
             .modal-body { padding-top: 14px; }
 
+            .jogo-modal-overlay { padding: 10px; }
+            .jogo-modal-panel { max-height: 94vh; border-radius: 16px; }
+            .jogo-modal-header,
+            .jogo-modal-body,
+            .jogo-modal-footer { padding-left: 14px; padding-right: 14px; }
+            .jogo-modal-header h3 { font-size: 26px; }
+            .jogo-modal-footer { flex-direction: column-reverse; gap: 8px; }
+            .jogo-modal-footer .btn { width: 100%; justify-content: center; }
+            .jogo-modal-add-btn { width: 100%; justify-content: center; }
+
             .modal-header h3 { font-size: 18px; }
             .modal-header p { font-size: 13px; }
 
@@ -641,7 +814,7 @@ $csrfToken = csrf_token();
                 padding: 14px 12px;
                 gap: 10px;
             }
-            .canal-override-item input { font-size: 15px; }
+            .canal-override-item .ovr-name { font-size: 15px; }
 
             .quality-chip {
                 padding: 6px 12px;
@@ -785,30 +958,30 @@ $csrfToken = csrf_token();
 </main>
 
 <!-- ============ MODAL EDITAR JOGO ============ -->
-<div id="modal-jogo" onclick="if(event.target===this)fecharModalJogo()" style="display:none; position:fixed; inset:0; background:rgba(5,7,10,0.9); backdrop-filter:blur(8px); z-index:1000; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#0d1117; border:1px solid #30363d; border-radius:16px; width:100%; max-width:580px; max-height:90vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,0.7);">
-        <div style="padding:20px 24px 16px; border-bottom:1px solid #30363d; display:flex; justify-content:space-between; align-items:center;">
+<div id="modal-jogo" onclick="if(event.target===this)fecharModalJogo()" class="jogo-modal-overlay" style="display:none;">
+    <div class="jogo-modal-panel">
+        <div class="jogo-modal-header">
             <div>
-                <h3 id="modal-jogo-title" style="margin:0; font-size:17px; font-weight:700;">Editar Canais do Jogo</h3>
-                <p id="modal-jogo-subtitle" style="margin:4px 0 0; font-size:13px; color:#8b949e;"></p>
+                <h3 id="modal-jogo-title">Editar Canais do Jogo</h3>
+                <p id="modal-jogo-subtitle"></p>
             </div>
-            <button onclick="fecharModalJogo()" style="background:none; border:none; color:#8b949e; font-size:24px; cursor:pointer; padding:4px 8px;">&times;</button>
+            <button onclick="fecharModalJogo()" class="jogo-modal-close" aria-label="Fechar modal">&times;</button>
         </div>
-        <div style="padding:20px 24px;">
-            <div id="api-canais-info" style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
+        <div class="jogo-modal-body">
+            <div id="api-canais-info" class="api-canais-info api-canais-info-modal">
                 <strong>Canais na API:</strong>
-                <span id="api-canais-lista" style="color:#8b949e;">—</span>
+                <span id="api-canais-lista">—</span>
             </div>
-            <p style="font-size:13px; color:#8b949e; margin:0 0 14px;">
+            <p class="jogo-modal-note">
                 📝 O primeiro item representa o canal original da API. Você pode remover o canal inteiro ou só qualidades.
             </p>
-            <div id="canais-overrides-list"></div>
-            <button class="btn btn-ghost btn-sm" onclick="adicionarCanalInput()" style="margin-top:12px; display:inline-flex; align-items:center; gap:6px;">
+            <div id="canais-overrides-list" class="canais-overrides-list"></div>
+            <button class="btn btn-ghost btn-sm jogo-modal-add-btn" onclick="adicionarCanalInput()">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Adicionar Canal
             </button>
         </div>
-        <div style="padding:16px 24px; border-top:1px solid #30363d; display:flex; gap:12px; justify-content:flex-end;">
+        <div class="jogo-modal-footer">
             <button class="btn btn-ghost" onclick="fecharModalJogo()">Cancelar</button>
             <button class="btn btn-primary" onclick="salvarOverride()" id="btn-salvar-override">Salvar Alterações</button>
         </div>
@@ -1217,7 +1390,7 @@ $csrfToken = csrf_token();
         const canal = getCanalCatalogoByName(nameInput.value);
 
         if (!canal || !canal.qualities || canal.qualities.size === 0) {
-            wrap.innerHTML = '<span style="font-size:12px;color:var(--text-muted);">Selecione um canal válido para carregar qualidades.</span>';
+            wrap.innerHTML = '<span class="ovr-quality-empty">Selecione um canal válido para carregar qualidades.</span>';
             return;
         }
 
@@ -1277,15 +1450,15 @@ $csrfToken = csrf_token();
         const item = document.createElement('div');
         item.className = 'canal-override-item';
         item.innerHTML = `
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--text-muted);flex-shrink:0;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
-                <input class="ovr-name" type="text" ${isOriginal ? 'readonly' : ''} placeholder="Digite para buscar canal..." value="${nome}" style="background:transparent;border:none;color:var(--text);font-size:14px;outline:none;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <div style="flex:1;display:flex;flex-direction:column;gap:7px;">
+                <input class="ovr-name" type="text" ${isOriginal ? 'readonly' : ''} placeholder="Digite para buscar canal..." value="${nome}">
                 <input type="hidden" class="ovr-system-name" value="${systemName}">
                 <div class="ovr-suggestions" style="${isOriginal ? 'display:none;' : ''}"></div>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-                    <label style="font-size:12px;color:var(--text-muted);display:flex;gap:6px;align-items:center;"><input class="ovr-remove-channel" type="checkbox" ${removeChannel ? 'checked' : ''}> ${isOriginal ? 'Remover canal original da API deste jogo' : 'Remover canal inteiro'}</label>
+                    <label class="ovr-remove-row"><input class="ovr-remove-channel" type="checkbox" ${removeChannel ? 'checked' : ''}> ${isOriginal ? 'Remover canal original da API deste jogo' : 'Remover canal inteiro'}</label>
                 </div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Selecione as qualidades que devem aparecer (deixe todas marcadas para usar todas)</div>
+                <div class="ovr-help-text">Selecione as qualidades que devem aparecer (deixe todas marcadas para usar todas)</div>
                 <div class="ovr quality-options" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
             </div>
             <button onclick="this.parentElement.remove()" title="Remover" ${isOriginal ? 'style="display:none;"' : ''}>

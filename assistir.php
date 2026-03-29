@@ -330,6 +330,13 @@ if (empty($iframe_url)) {
             return url && url.includes('.m3u8');
         }
 
+        function shouldUseProxy(url) {
+            if (!url) return false;
+            // Streams do s27 devem tocar direto (sem proxy)
+            if (url.includes('s27-usa-cloudfront-net.online')) return false;
+            return true;
+        }
+
         async function initPlayer(url) {
             const iframe = document.getElementById('main-player');
             const jwDiv = document.getElementById('jw-player-container');
@@ -342,10 +349,12 @@ if (empty($iframe_url)) {
                 jwDiv.style.display = 'block';
                 iframe.src = 'about:blank';
 
-                const proxyUrl = "proxy.php?url=" + encodeURIComponent(url);
+                const streamUrl = shouldUseProxy(url)
+                    ? ("proxy.php?url=" + encodeURIComponent(url))
+                    : url;
 
                 jwplayer("jw-player-container").setup({
-                    file: proxyUrl,
+                    file: streamUrl,
                     type: "hls",
                     autostart: true,
                     width: "100%",
