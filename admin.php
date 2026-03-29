@@ -1103,7 +1103,7 @@ $csrfToken = csrf_token();
         const [users, sessRes, j, ovr, onlineRes] = await Promise.all([
             fetch('admin_api.php?action=list_users').then(r=>r.json()).catch(()=>[]),
             fetch('admin_api.php?action=active_sessions').then(r=>r.json()).catch(()=>({count: '?'})),
-            fetch('https://embedtv.best/api/jogos').then(r=>r.json()).catch(()=>[]),
+            fetch('proxy_embedtv.php?resource=jogos').then(r=>r.json()).catch(()=>[]),
             fetch('admin_api.php?action=get_overrides').then(r=>r.json()).catch(()=>({})),
             fetch('admin_api.php?action=online_count').then(r=>r.json()).catch(()=>({online_count: '?'}))
         ]);
@@ -1354,8 +1354,8 @@ $csrfToken = csrf_token();
     async function carregarCatalogoCanais() {
         catalogoCanais = {};
         const [res70, resEmbed] = await Promise.all([
-            fetch(`https://embed.70noticias.com.br/?api=1&t=live&c=all&_t=${Date.now()}`, { cache: 'no-store' }).then(r=>r.json()).catch(()=>({})),
-            fetch(`https://embedtv.best/api/channels?_t=${Date.now()}`, { cache: 'no-store' }).then(r=>r.json()).catch(()=>null)
+            fetch(`external_api.php?resource=channels&source=noticias70&_t=${Date.now()}`, { cache: 'no-store' }).then(r=>r.json()).catch(()=>({})),
+            fetch(`proxy_embedtv.php?resource=channels&_t=${Date.now()}`, { cache: 'no-store' }).then(r=>r.json()).catch(()=>null)
         ]);
 
         Object.keys(res70 || {}).forEach(cat => {
@@ -1381,7 +1381,7 @@ $csrfToken = csrf_token();
         lista.innerHTML = '<div class="empty-state"><p>Carregando jogos da API...</p></div>';
 
         const [jogos, overrides] = await Promise.all([
-            fetch(`https://embedtv.best/api/jogos?_t=${Date.now()}`, { cache: 'no-store' }).then(r=>r.json()).catch(()=>[]),
+            fetch(`proxy_embedtv.php?resource=jogos&_t=${Date.now()}`, { cache: 'no-store' }).then(r=>r.json()).catch(()=>[]),
             fetch(`admin_api.php?action=get_overrides&data=${localDateYmd()}&_t=${Date.now()}`, { cache: 'no-store' }).then(r=>r.json()).catch(()=>({}))
         ]);
 

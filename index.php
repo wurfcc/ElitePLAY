@@ -1181,18 +1181,18 @@ $viewerProfile = [
             noticias70: {
                 key: 'noticias70',
                 label: '70noticias',
-                url: 'https://embed.70noticias.com.br/?api=1&t=live&c=all'
+                url: 'external_api.php?resource=channels&source=noticias70'
             },
             bugoumods: {
                 key: 'bugoumods',
                 label: 'bugoumods',
-                url: 'https://embed.bugoumods.com/?api=1&t=live&c=all'
+                url: 'external_api.php?resource=channels&source=bugoumods'
             }
         };
         const CHANNELS_SOURCE_STORAGE_KEY = 'eliteplay_channels_source';
-        const epgUrl = 'https://embedtv.best/api/epgs';
-        const jogosUrl = 'https://embedtv.best/api/jogos';
-        const embedtvChannelsUrl = 'https://embedtv.best/api/channels';
+        const epgUrl = 'proxy_embedtv.php?resource=epgs';
+        const jogosUrl = 'proxy_embedtv.php?resource=jogos';
+        const embedtvChannelsUrl = 'proxy_embedtv.php?resource=channels';
         const localDateYmd = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         
         const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
@@ -1443,31 +1443,18 @@ $viewerProfile = [
         }
 
         async function fetchLiveScores() {
-            const TARGET = 'https://www.placardefutebol.com.br/jogos-de-hoje';
-            const PROXIES = [
-                'https://corsproxy.io/?',
-                'https://api.allorigins.win/raw?url=',
-                'https://api.codetabs.com/v1/proxy?quest='
-            ];
-
+            const scoreUrl = `external_api.php?resource=placar_hoje&_t=${Date.now()}`;
             let html = '';
-            for (const proxy of PROXIES) {
-                try {
-                    const url = proxy + encodeURIComponent(TARGET + '?t=' + Date.now());
-                    const response = await fetch(url);
-                    const text = await response.text();
-                    if (text.length > 500 && !text.includes('"error"') && text.includes('status-name')) {
-                        html = text;
-                        console.log('[ElitePLAY Scraper] Proxy OK:', proxy.split('/')[2]);
-                        break;
-                    }
-                } catch (e) { 
-                    console.warn('[ElitePLAY Scraper] Proxy falhou:', proxy.split('/')[2]);
-                }
+
+            try {
+                const response = await fetch(scoreUrl, { cache: 'no-store' });
+                html = await response.text();
+            } catch (e) {
+                console.warn('[ElitePLAY Scraper] Falha ao obter placares via backend.');
             }
 
             if (!html) { 
-                console.warn('[ElitePLAY Scraper] Todos os proxies falharam!'); 
+                console.warn('[ElitePLAY Scraper] Nenhum HTML de placar retornado.'); 
                 return []; 
             }
 
@@ -1873,35 +1860,26 @@ $viewerProfile = [
 
         async function fetchChannels(forceRefresh = false) {
             try {
-                const fromAssistir = sessionStorage.getItem('eliteplay_from_assistir') === '1';
                 const channelsSourceConfig = getCurrentChannelsSourceConfig();
-                
-                // 1. Primeiro carrega embedtv (mais importante para jogos)
-                const resEmbed = await fetchWithCache(embedtvChannelsUrl, CACHE_KEYS.channels + '_embed').catch(() => null);
 
-                // 2. Depois carrega 70noticias em background
-                let res70;
-                if (fromAssistir) {
-                    res70 = await fetchWithCache(
-                        channelsSourceConfig.url,
-                        `${CACHE_KEYS.channels}_${channelsSourceConfig.key}`,
-                        forceRefresh
-                    ).catch(() => ({}));
-                } else {
-                    res70 = await fetchWithCache(
-                        channelsSourceConfig.url,
-                        `${CACHE_KEYS.channels}_${channelsSourceConfig.key}`,
-                        forceRefresh
-                    ).catch(() => ({}));
-                }
+                const res70Promise = fetchWithCache(
+                    channelsSourceConfig.url,
+                    `${CACHE_KEYS.channels}_${channelsSourceConfig.key}`,
+                    forceRefresh
+                ).catch(() => ({}));
+
+                const resEmbed = await fetchWithCache(
+                    embedtvChannelsUrl,
+                    CACHE_KEYS.channels + '_embed',
+                    forceRefresh
+                ).catch(() => null);
 
                 let groupedChannels = {};
 
-                // --- 1. Processa 70Noticias (Prioridade - Qualidades FHD/HD) ---
                 const parseName = (fullName) => {
                     let original = fullName.trim();
                     const patterns = [/(?:FHD|HD|SD|4K|1080p|720p)/i, /\[LEG\]/i, /\(ALT\)/i, /\[ALT\]/i, /(?:\s|^)ALT(?:\s|$)/i, /(?:\s|^)\*(?:\s|$)/i];
-                    
+
                     let splitIndex = original.length;
                     for (const p of patterns) {
                         const m = original.match(p);
@@ -1910,48 +1888,83 @@ $viewerProfile = [
                             if (idx > 0 && idx < splitIndex) splitIndex = idx;
                         }
                     }
-                    
+
                     const baseName = original.substring(0, splitIndex).trim();
                     const quality = original.substring(baseName.length).trim();
                     return { baseName: baseName || original, quality: quality || 'Principal' };
                 };
 
-                for (const category in res70) {
-                    const canais = res70[category];
-                    if (Array.isArray(canais)) {
-                        canais.forEach(c => {
-                            const parsed = parseName(c.nome);
-                            const baseName = parsed.baseName || c.nome;
-                            const is4K = parsed.quality === '4K' || c.nome.toLowerCase().includes('4k');
-                            const norm = normalizeName(baseName);
-                            const channelCategory = c.categoria || category || 'Outros';
+                const normalizeCombinedChannels = (channelsMap) => {
+                    let combined = Object.values(channelsMap)
+                        .filter(c => !c.nome.includes('[H265]'))
+                        .map(c => ({
+                            ...c,
+                            streams: c.streams.filter(s => !s.name.includes('[H265]'))
+                        }));
 
-                            if (!groupedChannels[norm]) {
-                                groupedChannels[norm] = {
-                                    nome: baseName,
-                                    iframe_url: c.link,
-                                    categoria: is4K ? 'CANAIS 4K' : channelCategory,
-                                    logo: c.capa || '',
-                                    streams: []
-                                };
-                            } else if (is4K) {
-                                groupedChannels[norm].categoria = 'CANAIS 4K';
+                    const keywordMap = {
+                        'premiere': 'PREMIERE',
+                        'espn': 'ESPN',
+                        'sportv': 'SPORTV',
+                        'telecine': 'TELECINE',
+                        'hbo': 'HBO',
+                        'combate': 'LUTAS',
+                        'ufc': 'LUTAS',
+                        'globo': 'GLOBO',
+                        'record': 'RECORD',
+                        'band': 'BAND',
+                        'sbt': 'SBT',
+                        'cnn': 'NOTICIAS',
+                        'cartoon': 'INFANTIL',
+                        'disney': 'INFANTIL',
+                        'discovery': 'VARIEDADES',
+                        'max': 'FILMES E SERIES',
+                        'telecine': 'TELECINE',
+                        'paramount': 'FILMES E SERIES',
+                        'warner': 'FILMES E SERIES',
+                        'axn': 'FILMES E SERIES',
+                        'universal': 'FILMES E SERIES',
+                        'fox': 'FILMES E SERIES',
+                        'star': 'FILMES E SERIES',
+                        'prime video': 'PrimeVideo',
+                    };
+
+                    combined.forEach(chan => {
+                        const lowName = chan.nome.toLowerCase();
+                        if (['EmbedTV', 'CineTve', 'Outros', 'GERAL', 'TV', 'FILMES E SERIES'].includes(chan.categoria)) {
+                            for (const kw in keywordMap) {
+                                if (lowName.includes(kw)) {
+                                    chan.categoria = keywordMap[kw];
+                                    break;
+                                }
                             }
-                            // Evita duplicatas de URL na mesma API
-                            if (!groupedChannels[norm].streams.some(s => s.url === c.link)) {
-                                // Nome completo: CANAL-QUALITY (ex: ESPN-FHD)
-                                const qualityName = parsed.quality ? `${parsed.quality}` : 'Principal';
-                                groupedChannels[norm].streams.push({ name: qualityName, url: c.link });
-                            }
-                        });
+                        }
+                        if (lowName.includes('espn') && chan.categoria !== 'ESPN') chan.categoria = 'ESPN';
+                        if (lowName.includes('premiere') && chan.categoria !== 'PREMIERE') chan.categoria = 'PREMIERE';
+                        if (lowName.includes('telecine') && chan.categoria !== 'TELECINE') chan.categoria = 'TELECINE';
+                        if (lowName.includes('globo') && chan.categoria !== 'GLOBO') chan.categoria = 'GLOBO';
+                        if ((lowName.includes('hbo') || lowName.includes('max')) && chan.categoria !== 'HBO') chan.categoria = 'HBO';
+                    });
+
+                    return combined;
+                };
+
+                const renderCombinedChannels = (combined) => {
+                    if (!combined.length) return;
+                    allChannels = combined;
+                    window.channelsForGames = allChannels;
+                    renderCategories(allChannels);
+                    renderChannels(allChannels);
+                    updateMainCounter(allChannels.length);
+
+                    if (allJogosProcessed && allJogosProcessed.length > 0) {
+                        renderHorizontalJogos(allJogosProcessed);
                     }
-                }
+                };
 
-                // --- 2. Processa EmbedTV (Adiciona como Opção se já existe ou cria novo) ---
                 if (resEmbed && resEmbed.channels) {
-                    embedtvChannels = resEmbed.channels; // Cache para fallback de logos
-                    
-                    // Mapa de IDs para nomes de categorias da EmbedTV
+                    embedtvChannels = resEmbed.channels;
+
                     const embedCatMap = {};
                     if (resEmbed.categories) {
                         resEmbed.categories.forEach(ct => embedCatMap[ct.id] = ct.name);
@@ -1959,11 +1972,8 @@ $viewerProfile = [
 
                     resEmbed.channels.forEach(c => {
                         const norm = normalizeName(c.name);
-
-                        // Monta URL m3u8 usando o ID do canal
                         const m3u8Url = `https://mr.s27-usa-cloudfront-net.online/fontes/mr/${c.id}.m3u8`;
 
-                        // Determina a categoria da EmbedTV (pega a primeira válida que não seja 'Todos')
                         let catName = 'EmbedTV';
                         if (c.categories && Array.isArray(c.categories)) {
                             const validCatId = c.categories.find(id => id !== 0);
@@ -1976,11 +1986,9 @@ $viewerProfile = [
                             if (!groupedChannels[norm].streams.some(s => s.url === m3u8Url)) {
                                 groupedChannels[norm].streams.push({ name: 'EmbedTV', url: m3u8Url });
                             }
-                            // Armazena o ID do embedtv para uso no logo dinâmico
                             if (!groupedChannels[norm].embedtv_id) {
                                 groupedChannels[norm].embedtv_id = c.id;
                             }
-                            // Usa logo da EmbedTV como fallback se não tiver logo da 70noticias
                             if (!groupedChannels[norm].logo && c.image) {
                                 groupedChannels[norm].logo = c.image;
                             }
@@ -1997,94 +2005,58 @@ $viewerProfile = [
                     });
                 }
 
-                let combinedChannels = Object.values(groupedChannels);
+                renderCombinedChannels(normalizeCombinedChannels(groupedChannels));
 
-                // Remove canais com [H265] no nome e filtra streams com [H265]
-                combinedChannels = combinedChannels
-                    .filter(c => !c.nome.includes('[H265]'))
-                    .map(c => ({
-                        ...c,
-                        streams: c.streams.filter(s => !s.name.includes('[H265]'))
-                    }));
+                const res70 = await res70Promise;
+                for (const category in res70) {
+                    const canais = res70[category];
+                    if (!Array.isArray(canais)) continue;
 
-                // --- 4. Refinamento de Categorização (Faz o "geral" pedido pelo usuário) ---
-                // Mapeamento de keywords para categorias conhecidas
-                const keywordMap = {
-                    'premiere': 'PREMIERE',
-                    'espn': 'ESPN',
-                    'sportv': 'SPORTV',
-                    'telecine': 'TELECINE',
-                    'hbo': 'HBO',
-                    'combate': 'LUTAS',
-                    'ufc': 'LUTAS',
-                    'globo': 'GLOBO',
-                    'record': 'RECORD',
-                    'band': 'BAND',
-                    'sbt': 'SBT',
-                    'cnn': 'NOTICIAS',
-                    'cartoon': 'INFANTIL',
-                    'disney': 'INFANTIL',
-                    'discovery': 'VARIEDADES',
-                    'max': 'FILMES E SERIES', // HBO Max / Max
-                    'telecine': 'TELECINE',
-                    'paramount': 'FILMES E SERIES',
-                    'warner': 'FILMES E SERIES',
-                    'axn': 'FILMES E SERIES',
-                    'universal': 'FILMES E SERIES',
-                    'fox': 'FILMES E SERIES',
-                    'star': 'FILMES E SERIES',
-                    'prime video': 'PrimeVideo',
-                };
+                    canais.forEach(c => {
+                        const parsed = parseName(c.nome);
+                        const baseName = parsed.baseName || c.nome;
+                        const is4K = parsed.quality === '4K' || c.nome.toLowerCase().includes('4k');
+                        const norm = normalizeName(baseName);
+                        const channelCategory = c.categoria || category || 'Outros';
 
-                combinedChannels.forEach(chan => {
-                    const lowName = chan.nome.toLowerCase();
-                    // Se a categoria for genérica ou de uma API específica, tenta mover para uma categoria global
-                    if (['EmbedTV', 'CineTve', 'Outros', 'GERAL', 'TV', 'FILMES E SERIES'].includes(chan.categoria)) {
-                        for (const kw in keywordMap) {
-                            if (lowName.includes(kw)) {
-                                chan.categoria = keywordMap[kw];
-                                break;
+                        if (!groupedChannels[norm]) {
+                            groupedChannels[norm] = {
+                                nome: baseName,
+                                iframe_url: c.link,
+                                categoria: is4K ? 'CANAIS 4K' : channelCategory,
+                                logo: c.capa || '',
+                                streams: []
+                            };
+                        } else {
+                            groupedChannels[norm].nome = baseName || groupedChannels[norm].nome;
+                            groupedChannels[norm].iframe_url = c.link || groupedChannels[norm].iframe_url;
+                            if (is4K) {
+                                groupedChannels[norm].categoria = 'CANAIS 4K';
+                            } else if (!groupedChannels[norm].categoria || groupedChannels[norm].categoria === 'EmbedTV' || groupedChannels[norm].categoria === 'Outros') {
+                                groupedChannels[norm].categoria = channelCategory;
                             }
+                            if (c.capa) groupedChannels[norm].logo = c.capa;
                         }
-                    }
-                    // Harmonização: Garante que canais importantes estejam nas categorias principais
-                    if (lowName.includes('espn') && chan.categoria !== 'ESPN') chan.categoria = 'ESPN';
-                    if (lowName.includes('premiere') && chan.categoria !== 'PREMIERE') chan.categoria = 'PREMIERE';
-                    if (lowName.includes('telecine') && chan.categoria !== 'TELECINE') chan.categoria = 'TELECINE';
-                    if (lowName.includes('globo') && chan.categoria !== 'GLOBO') chan.categoria = 'GLOBO';
-                    // Requerimento do usuário: MAX e HBO MAX na categoria HBO
-                    if ((lowName.includes('hbo') || lowName.includes('max')) && chan.categoria !== 'HBO') chan.categoria = 'HBO';
-                });
 
-                if (combinedChannels.length > 0) {
-                    allChannels = combinedChannels;
-                    window.channelsForGames = allChannels;
-                    renderCategories(allChannels);
-                    renderChannels(allChannels);
-                    updateMainCounter(allChannels.length);
-                    
-                    if (allJogosProcessed && allJogosProcessed.length > 0) {
-                         renderHorizontalJogos(allJogosProcessed);
-                    }
-                    
-                    fetch(epgUrl).then(res => res.json()).then(result => {
-                        epgData = result.reduce((acc, item) => { acc[item.id] = item.epg; return acc; }, {});
-                    }).catch(() => null);
+                        if (!groupedChannels[norm].streams.some(s => s.url === c.link)) {
+                            const qualityName = parsed.quality ? `${parsed.quality}` : 'Principal';
+                            groupedChannels[norm].streams.push({ name: qualityName, url: c.link });
+                        }
+                    });
                 }
+
+                renderCombinedChannels(normalizeCombinedChannels(groupedChannels));
+
+                fetch(epgUrl).then(res => res.json()).then(result => {
+                    epgData = result.reduce((acc, item) => { acc[item.id] = item.epg; return acc; }, {});
+                }).catch(() => null);
 
                 // 3. Carrega jogos, Overrides do admin e Scores (usa cache se voltar do assistir)
                 let jogos, adminOverrides;
-                if (fromAssistir) {
-                    [jogos, adminOverrides] = await Promise.all([
-                        fetchWithCache(`${jogosUrl}?_t=${Date.now()}`, CACHE_KEYS.jogos).catch(() => []),
-                        fetchWithCache(`admin_api.php?action=get_overrides&data=${localDateYmd()}&_t=${Date.now()}`, CACHE_KEYS.jogos + '_overrides').catch(() => ({}))
-                    ]);
-                } else {
-                    [jogos, adminOverrides] = await Promise.all([
-                        fetchWithCache(`${jogosUrl}?_t=${Date.now()}`, CACHE_KEYS.jogos).catch(() => []),
-                        fetchWithCache(`admin_api.php?action=get_overrides&data=${localDateYmd()}&_t=${Date.now()}`, CACHE_KEYS.jogos + '_overrides').catch(() => ({}))
-                    ]);
-                }
+                [jogos, adminOverrides] = await Promise.all([
+                    fetchWithCache(`${jogosUrl}&_t=${Date.now()}`, CACHE_KEYS.jogos).catch(() => []),
+                    fetchWithCache(`admin_api.php?action=get_overrides&data=${localDateYmd()}&_t=${Date.now()}`, CACHE_KEYS.jogos + '_overrides').catch(() => ({}))
+                ]);
 
                 if (!Array.isArray(jogos)) jogos = [];
 
