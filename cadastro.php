@@ -85,19 +85,18 @@ try {
         exit;
     }
 
-    // Cria usuário com acesso expirado (dias=0) → webhook ativa após pagamento
-    $expirado = date('Y-m-d H:i:s', time() - 60);
+    // Cria usuário com 0 dias de acesso → webhook ativa após pagamento
     $stmt = $pdo->prepare('
-        INSERT INTO usuarios (email, nome, whatsapp, ativo, dias_acesso, acesso_expira_em)
-        VALUES (?, ?, ?, 1, 0, ?)
+        INSERT INTO usuarios (email, nome, whatsapp, ativo, dias_acesso)
+        VALUES (?, ?, ?, 1, 0)
     ');
-    $stmt->execute([$email, $nome, $whatsapp, $expirado]);
+    $stmt->execute([$email, $nome, $whatsapp]);
     $userId = (int)$pdo->lastInsertId();
 
     // Auto-login: cria sessão e seta cookie
     session_regenerate_id(true);
 
-    $token = criar_sessao($userId, $ip, $expirado);
+    $token = criar_sessao($userId, $ip, null);
 
     $cookieExpires  = time() + SESSION_TTL;
     $cookieOptions  = function_exists('auth_cookie_options')
