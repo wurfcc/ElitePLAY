@@ -457,13 +457,19 @@ $csrf = csrf_token();
                     body: JSON.stringify({ email, csrf: '<?php echo $csrf; ?>' })
                 }).catch(() => null);
 
-                if (response && response.ok) {
+                if (response) {
                     const data = await response.json().catch(() => null);
-                    if (data && data.success) {
+                    if (response.ok && data && data.success) {
                         if (successMsg && data.message) successMsg.textContent = data.message;
                         alertSuccess.classList.add('show');
                         const nextUrl = data.redirect || 'index.php';
                         setTimeout(() => { window.location.href = nextUrl; }, 1500);
+                        return;
+                    }
+
+                    if (data && data.message) {
+                        alertMsg.textContent = data.message;
+                        alertError.classList.add('show');
                         return;
                     }
                 }

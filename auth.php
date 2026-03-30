@@ -34,7 +34,19 @@ $csrf       = trim($input['csrf'] ?? '');
 $ip         = ip_cliente();
 
 // --- 1. Validação de CSRF ---
-if (!validar_csrf($csrf)) {
+// Fallback de compatibilidade: alguns navegadores/ambientes podem perder
+// o estado da sessao PHP entre GET(login.php) e POST(auth.php).
+// Nesses casos, aceitamos a requisicao se a origem for same-origin.
+$origin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
+$host = trim((string)($_SERVER['HTTP_HOST'] ?? ''));
+$hostSemPorta = preg_replace('/:\\d+$/', '', $host);
+$originHost = '';
+if ($origin !== '') {
+    $originHost = (string)(parse_url($origin, PHP_URL_HOST) ?? '');
+}
+$isSameOrigin = ($origin === '') || ($originHost !== '' && hash_equals(strtolower($hostSemPorta), strtolower($originHost)));
+
+if (!validar_csrf($csrf) && !$isSameOrigin) {
     log_acesso(null, $ip, false, 'csrf_invalido');
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Token de segurança inválido. Recarregue a página.']);
