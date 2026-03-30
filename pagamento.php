@@ -15,6 +15,18 @@ if (!isset($usuario_logado['expired']) || $usuario_logado['expired'] !== true) {
 }
 
 $email = $usuario_logado['email'] ?? 'Usuário';
+$userId = (int)($usuario_logado['usuario_id'] ?? 0);
+
+// Verifica se o trial ainda está disponível para este usuário
+$trialDisponivel = false;
+try {
+    $stmtTrial = db()->prepare('SELECT trial_usado FROM usuarios WHERE id = ? LIMIT 1');
+    $stmtTrial->execute([$userId]);
+    $rowTrial = $stmtTrial->fetch();
+    $trialDisponivel = $rowTrial && (int)$rowTrial['trial_usado'] === 0;
+} catch (\Throwable $e) {}
+
+$csrf = csrf_token();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -194,6 +206,77 @@ $email = $usuario_logado['email'] ?? 'Usuário';
                 font-size: 32px;
             }
         }
+        /* Trial Banner */
+        .trial-banner {
+            background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(5,150,105,0.08));
+            border: 1px solid rgba(16,185,129,0.35);
+            border-radius: 16px;
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+        .trial-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1.2px;
+            color: #10b981;
+            background: rgba(16,185,129,0.15);
+            border: 1px solid rgba(16,185,129,0.3);
+            padding: 3px 8px;
+            border-radius: 50px;
+            margin-bottom: 6px;
+        }
+        .trial-badge::before {
+            content: '';
+            width: 6px; height: 6px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse-trial 1.5s infinite;
+        }
+        @keyframes pulse-trial {
+            0%,100% { opacity:1; } 50% { opacity:0.4; }
+        }
+        .trial-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 2px;
+        }
+        .trial-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .trial-timer {
+            font-size: 11px;
+            color: #10b981;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+        .btn-trial {
+            flex-shrink: 0;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn-trial:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-trial:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        @media (max-width: 400px) {
+            .trial-banner { flex-direction: column; text-align: center; }
+        }
     </style>
 </head>
 <body>
@@ -209,6 +292,21 @@ $email = $usuario_logado['email'] ?? 'Usuário';
         </p>
 
         <div class="plans">
+
+            <?php if ($trialDisponivel): ?>
+            <div class="trial-banner">
+                <div>
+                    <div class="trial-badge">GRÁTIS</div>
+                    <div class="trial-title">Teste por 10 minutos</div>
+                    <div class="trial-desc">Experimente sem precisar de cartão</div>
+                    <div class="trial-timer">⏱ 10 min de acesso completo</div>
+                </div>
+                <button class="btn-trial" id="btn-trial" onclick="ativarTrial()">
+                    Testar Agora
+                </button>
+            </div>
+            <?php endif; ?>
+
             <div class="plan-card">
                 <div class="plan-info">
                     <div class="plan-name">Plano Pocket</div>
@@ -266,6 +364,36 @@ $email = $usuario_logado['email'] ?? 'Usuário';
         document.getElementById('checkout_pocket').href    = CHECKOUT_POCKET;
         document.getElementById('checkout_mensal').href    = CHECKOUT_MENSAL;
         document.getElementById('checkout_semestral').href = CHECKOUT_SEMESTRAL;
+
+        async function ativarTrial() {
+            const btn = document.getElementById('btn-trial');
+            if (!btn) return;
+            btn.disabled = true;
+            btn.textContent = 'Ativando...';
+
+            try {
+                const res = await fetch('trial.php', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ csrf: '<?php echo $csrf; ?>' })
+                }).catch(() => null);
+
+                const data = res ? await res.json().catch(() => null) : null;
+
+                if (data && data.success) {
+                    btn.textContent = 'Redirecionando...';
+                    window.location.href = data.redirect || 'index.php';
+                    return;
+                }
+
+                btn.textContent = data?.message || 'Erro. Tente novamente.';
+                setTimeout(() => { btn.disabled = false; btn.textContent = 'Testar Agora'; }, 3000);
+            } catch (e) {
+                btn.disabled = false;
+                btn.textContent = 'Testar Agora';
+            }
+        }
     </script>
 </body>
 </html>
