@@ -153,15 +153,7 @@ try {
 $token = criar_sessao((int)$usuario['id'], $ip, $userExpiresAt);
 
 // Seta o cookie de autenticacao com o token puro
-$cookie_options = [
-    'expires'  => time() + SESSION_TTL,
-    'path'     => '/',
-    'domain'   => '',
-    'secure'   => PRODUCAO,
-    'httponly' => true,
-    'samesite' => 'Strict',
-];
-setcookie(AUTH_COOKIE_NAME, $token, $cookie_options);
+setcookie(AUTH_COOKIE_NAME, $token, auth_cookie_options(time() + SESSION_TTL));
 
 // Zera os contadores de tentativa deste IP/email
 resetar_tentativas($ip, $email);

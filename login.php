@@ -453,6 +453,7 @@ $csrf = csrf_token();
                 // Exemplo de chamada ao backend (será implementada com banco de dados depois)
                 const response = await fetch('auth.php', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, csrf: '<?php echo $csrf; ?>' })
                 }).catch(() => null);

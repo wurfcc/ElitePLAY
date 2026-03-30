@@ -49,6 +49,32 @@ function configurar_sessao(): void {
     }
 }
 
+function auth_cookie_domain(): string {
+    $host = strtolower(trim((string)($_SERVER['HTTP_HOST'] ?? '')));
+    $host = preg_replace('/:\\d+$/', '', $host);
+
+    if ($host === '' || $host === 'localhost' || filter_var($host, FILTER_VALIDATE_IP)) {
+        return '';
+    }
+
+    if (str_starts_with($host, 'www.')) {
+        $host = substr($host, 4);
+    }
+
+    return '.' . $host;
+}
+
+function auth_cookie_options(int $expiresAt): array {
+    return [
+        'expires' => $expiresAt,
+        'path' => '/',
+        'domain' => PRODUCAO ? auth_cookie_domain() : '',
+        'secure' => PRODUCAO,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ];
+}
+
 // --- Gera (ou retorna) o CSRF token para o formulário ---
 function csrf_token(): string {
     if (empty($_SESSION[CSRF_TOKEN_KEY])) {

@@ -19,13 +19,7 @@ if (!empty($token_raw)) {
     }
 
     // Remove o cookie do navegador
-    setcookie(AUTH_COOKIE_NAME, '', [
-        'expires'  => time() - 3600,
-        'path'     => '/',
-        'httponly' => true,
-        'samesite' => 'Strict',
-        'secure'   => PRODUCAO,
-    ]);
+    setcookie(AUTH_COOKIE_NAME, '', auth_cookie_options(time() - 3600));
 }
 
 // Destrói a sessão PHP
