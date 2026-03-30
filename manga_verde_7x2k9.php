@@ -38,7 +38,8 @@ if (!$email || !$productId) {
 
 // Identifica o plano pelo product_id E pelo nome do produto
 $planos = [
-    '30453' => ['nome' => 'Mensal', 'dias' => 30],
+    '31315' => ['nome' => 'Pocket',    'dias' => 2],
+    '30453' => ['nome' => 'Mensal',    'dias' => 30],
     '30456' => ['nome' => 'Semestral', 'dias' => 180],
 ];
 
@@ -54,6 +55,8 @@ elseif (stripos($nomeLower, 'semestral') !== false) {
     $plano = ['nome' => 'Semestral', 'dias' => 180];
 } elseif (stripos($nomeLower, 'mensal') !== false) {
     $plano = ['nome' => 'Mensal', 'dias' => 30];
+} elseif (stripos($nomeLower, 'pocket') !== false) {
+    $plano = ['nome' => 'Pocket', 'dias' => 2];
 }
 
 if (!$plano) {

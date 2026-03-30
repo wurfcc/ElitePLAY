@@ -211,6 +211,21 @@ $email = $usuario_logado['email'] ?? 'Usuário';
         <div class="plans">
             <div class="plan-card">
                 <div class="plan-info">
+                    <div class="plan-name">Plano Pocket</div>
+                    <div class="plan-desc">2 dias de acesso</div>
+                </div>
+                <div class="plan-price">
+                    <div class="price-value">R$ 3</div>
+                    <div class="price-period"></div>
+                </div>
+            </div>
+
+            <a href="#" class="checkout-btn" id="checkout_pocket" target="_blank">
+                Assinar Plano Pocket
+            </a>
+
+            <div class="plan-card">
+                <div class="plan-info">
                     <div class="plan-name">Plano Mensal</div>
                     <div class="plan-desc">30 dias de acesso</div>
                 </div>
@@ -244,11 +259,12 @@ $email = $usuario_logado['email'] ?? 'Usuário';
     </div>
 
     <script>
-        // Substitua os links de checkout quando tiver
-        const CHECKOUT_MENSAL = '#LINK_MENSAL_SEMPRE_VAZIO_AJUSTE_DEPOIS';
-        const CHECKOUT_SEMESTRAL = '#LINK_SEMESTRAL_SEMPRE_VAZIO_AJUSTE_DEPOIS';
+        const CHECKOUT_POCKET    = 'https://pay.lowify.com.br/checkout.php?product_id=JrGQLa';
+        const CHECKOUT_MENSAL    = 'https://pay.lowify.com.br/checkout.php?product_id=e1Cpgy';
+        const CHECKOUT_SEMESTRAL = 'https://pay.lowify.com.br/checkout.php?product_id=oxmTl0';
 
-        document.getElementById('checkout_mensal').href = CHECKOUT_MENSAL;
+        document.getElementById('checkout_pocket').href    = CHECKOUT_POCKET;
+        document.getElementById('checkout_mensal').href    = CHECKOUT_MENSAL;
         document.getElementById('checkout_semestral').href = CHECKOUT_SEMESTRAL;
     </script>
 </body>
