@@ -7,7 +7,7 @@ require_once __DIR__ . '/security.php';
 configurar_sessao();
 
 // Invalida o token no banco (revoga a sessão ativa)
-$token_raw = $_COOKIE[SESSION_NAME] ?? '';
+$token_raw = $_COOKIE[AUTH_COOKIE_NAME] ?? '';
 if (!empty($token_raw)) {
     $token_hash = hash('sha256', $token_raw);
     try {
@@ -19,7 +19,7 @@ if (!empty($token_raw)) {
     }
 
     // Remove o cookie do navegador
-    setcookie(SESSION_NAME, '', [
+    setcookie(AUTH_COOKIE_NAME, '', [
         'expires'  => time() - 3600,
         'path'     => '/',
         'httponly' => true,

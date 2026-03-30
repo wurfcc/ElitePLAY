@@ -140,7 +140,7 @@ try {
 // Cria a nova sessão (única e exclusiva)
 $token = criar_sessao((int)$usuario['id'], $ip, $userExpiresAt);
 
-// Seta o cookie de sessão segura com o token puro
+// Seta o cookie de autenticacao com o token puro
 $cookie_options = [
     'expires'  => time() + SESSION_TTL,
     'path'     => '/',
@@ -149,7 +149,7 @@ $cookie_options = [
     'httponly' => true,
     'samesite' => 'Strict',
 ];
-setcookie(SESSION_NAME, $token, $cookie_options);
+setcookie(AUTH_COOKIE_NAME, $token, $cookie_options);
 
 // Zera os contadores de tentativa deste IP/email
 resetar_tentativas($ip, $email);

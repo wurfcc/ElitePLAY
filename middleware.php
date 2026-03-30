@@ -23,8 +23,8 @@ $usuario_logado = validar_sessao_cookie();
 
 if ($usuario_logado === null) {
     // Destrói a sessão PHP e o cookie para forçar nova autenticação
-    if (isset($_COOKIE[SESSION_NAME])) {
-        setcookie(SESSION_NAME, '', [
+    if (isset($_COOKIE[AUTH_COOKIE_NAME])) {
+        setcookie(AUTH_COOKIE_NAME, '', [
             'expires'  => time() - 3600,
             'path'     => '/',
             'httponly' => true,

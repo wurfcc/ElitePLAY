@@ -11,6 +11,9 @@ if (!defined('PRODUCAO')) {
 if (!defined('SESSION_NAME')) {
     define('SESSION_NAME', 'eliteplay_sess');
 }
+if (!defined('AUTH_COOKIE_NAME')) {
+    define('AUTH_COOKIE_NAME', 'eliteplay_auth');
+}
 if (!defined('SESSION_TTL')) {
     define('SESSION_TTL', 60 * 60 * 8);
 }
@@ -162,7 +165,7 @@ function criar_sessao(int $usuario_id, string $ip, ?string $user_expires_at = nu
 
 // --- Valida o cookie de sessão e retorna os dados do usuário ou null ---
 function validar_sessao_cookie(): ?array {
-    $token_raw = $_COOKIE[SESSION_NAME] ?? '';
+    $token_raw = $_COOKIE[AUTH_COOKIE_NAME] ?? '';
     if (empty($token_raw)) {
         return null;
     }
