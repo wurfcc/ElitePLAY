@@ -417,8 +417,12 @@ $csrf = csrf_token();
     </div>
 
     <script>
+        let isSubmitting = false;
+
         async function handleLogin(e) {
             e.preventDefault();
+
+            if (isSubmitting) return;
 
             const email = document.getElementById('email').value.trim();
             const btn = document.getElementById('btn-submit');
@@ -441,7 +445,9 @@ $csrf = csrf_token();
             }
 
             // Ativa loading
+            isSubmitting = true;
             btn.classList.add('loading');
+            btn.disabled = true;
 
             try {
                 // Exemplo de chamada ao backend (será implementada com banco de dados depois)
@@ -471,6 +477,8 @@ $csrf = csrf_token();
                 alertError.classList.add('show');
             } finally {
                 btn.classList.remove('loading');
+                btn.disabled = false;
+                isSubmitting = false;
             }
         }
 

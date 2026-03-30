@@ -5,6 +5,28 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
 
+if (!defined('PRODUCAO')) {
+    define('PRODUCAO', false);
+}
+if (!defined('SESSION_NAME')) {
+    define('SESSION_NAME', 'eliteplay_sess');
+}
+if (!defined('SESSION_TTL')) {
+    define('SESSION_TTL', 60 * 60 * 8);
+}
+if (!defined('CSRF_TOKEN_KEY')) {
+    define('CSRF_TOKEN_KEY', 'eliteplay_csrf');
+}
+if (!defined('RATE_MAX_TENTATIVAS')) {
+    define('RATE_MAX_TENTATIVAS', 5);
+}
+if (!defined('RATE_JANELA_MINUTOS')) {
+    define('RATE_JANELA_MINUTOS', 15);
+}
+if (!defined('RATE_BLOQUEIO_MINUTOS')) {
+    define('RATE_BLOQUEIO_MINUTOS', 30);
+}
+
 // --- Configuração de sessão segura (deve ser chamada ANTES de session_start) ---
 function configurar_sessao(): void {
     $params = [
@@ -128,13 +150,12 @@ function criar_sessao(int $usuario_id, string $ip, ?string $user_expires_at = nu
     // Gera token de 64 bytes aleatórios (128 hex chars)
     $token      = bin2hex(random_bytes(64));
     $token_hash = hash('sha256', $token);
-    $expires_at = date('Y-m-d H:i:s', time() + SESSION_TTL);
     $user_agent = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 512);
 
     $pdo->prepare('
         INSERT INTO sessoes (usuario_id, token_hash, ip, user_agent, expires_at, user_expires_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ')->execute([$usuario_id, $token_hash, $ip, $user_agent, $expires_at, $user_expires_at]);
+        VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), ?)
+    ')->execute([$usuario_id, $token_hash, $ip, $user_agent, SESSION_TTL, $user_expires_at]);
 
     return $token;  // O token puro vai para o cookie
 }
