@@ -335,6 +335,34 @@ $csrf = csrf_token();
             .login-card { padding: 28px 20px; }
             .card-title { font-size: 19px; }
         }
+
+        /* Tabs */
+        .auth-tabs {
+            display: flex;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 24px;
+            gap: 4px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 9px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            border-radius: 7px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: var(--primary-blue);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(59,130,246,0.35);
+        }
     </style>
 </head>
 <body>
@@ -353,8 +381,14 @@ $csrf = csrf_token();
         </div>
 
         <div class="login-card">
-            <h1 class="card-title">Bem-vindo de volta 👋</h1>
-            <p class="card-subtitle">Informe seu e-mail para acessar sua conta.</p>
+
+            <div class="auth-tabs">
+                <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">Entrar</button>
+                <button class="tab-btn" id="tab-cadastro" onclick="switchTab('cadastro')">Criar Conta</button>
+            </div>
+
+            <h1 class="card-title" id="card-title">Bem-vindo de volta 👋</h1>
+            <p class="card-subtitle" id="card-subtitle">Informe seu e-mail para acessar sua conta.</p>
 
             <div class="alert error" id="alert-error">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -401,13 +435,51 @@ $csrf = csrf_token();
                 </button>
             </form>
 
-            <div class="info-box">
+            <!-- Formulário de Cadastro -->
+            <form id="register-form" onsubmit="handleCadastro(event)" novalidate style="display:none">
+                <div class="form-group">
+                    <label for="reg-nome">Nome completo</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </span>
+                        <input type="text" id="reg-nome" class="form-input" placeholder="Seu nome completo" autocomplete="name" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="reg-email">E-mail</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        </span>
+                        <input type="email" id="reg-email" class="form-input" placeholder="seuemail@exemplo.com" autocomplete="email" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="reg-whatsapp">WhatsApp</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.86a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        </span>
+                        <input type="tel" id="reg-whatsapp" class="form-input" placeholder="(11) 99999-9999" autocomplete="tel" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit" id="btn-cadastro">
+                    <span class="btn-text">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="margin-right:4px;vertical-align:middle;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                        Criar Minha Conta
+                    </span>
+                    <div class="spinner"></div>
+                </button>
+            </form>
+
+            <div class="info-box" id="info-box">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0">
                     <circle cx="12" cy="12" r="10"/>
                     <line x1="12" y1="8" x2="12" y2="12"/>
                     <line x1="12" y1="16" x2="12.01" y2="16"/>
                 </svg>
-                <span>O acesso é exclusivo para assinantes cadastrados. Sem senha necessária — utilizamos apenas o e-mail para verificar sua assinatura.</span>
+                <span id="info-text">O acesso é exclusivo para assinantes cadastrados. Sem senha necessária — utilizamos apenas o e-mail para verificar sua assinatura.</span>
             </div>
         </div>
 
@@ -418,6 +490,81 @@ $csrf = csrf_token();
 
     <script>
         let isSubmitting = false;
+        let isRegSubmitting = false;
+
+        function switchTab(tab) {
+            const isLogin = tab === 'login';
+            document.getElementById('login-form').style.display    = isLogin ? '' : 'none';
+            document.getElementById('register-form').style.display = isLogin ? 'none' : '';
+            document.getElementById('tab-login').classList.toggle('active', isLogin);
+            document.getElementById('tab-cadastro').classList.toggle('active', !isLogin);
+            document.getElementById('alert-error').classList.remove('show');
+            document.getElementById('alert-success').classList.remove('show');
+            document.getElementById('card-title').textContent    = isLogin ? 'Bem-vindo de volta 👋' : 'Criar conta 🚀';
+            document.getElementById('card-subtitle').textContent = isLogin
+                ? 'Informe seu e-mail para acessar sua conta.'
+                : 'Preencha os dados abaixo para começar.';
+            document.getElementById('info-text').textContent = isLogin
+                ? 'O acesso é exclusivo para assinantes cadastrados. Sem senha necessária — utilizamos apenas o e-mail para verificar sua assinatura.'
+                : 'Após criar sua conta, você será redirecionado para escolher seu plano de acesso.';
+        }
+
+        async function handleCadastro(e) {
+            e.preventDefault();
+            if (isRegSubmitting) return;
+
+            const nome     = document.getElementById('reg-nome').value.trim();
+            const email    = document.getElementById('reg-email').value.trim();
+            const whatsapp = document.getElementById('reg-whatsapp').value.trim();
+            const alertError   = document.getElementById('alert-error');
+            const alertMsg     = document.getElementById('alert-msg');
+            const alertSuccess = document.getElementById('alert-success');
+            const btn          = document.getElementById('btn-cadastro');
+
+            alertError.classList.remove('show');
+            alertSuccess.classList.remove('show');
+
+            if (!nome) { alertMsg.textContent = 'Informe seu nome completo.'; alertError.classList.add('show'); return; }
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!email || !emailRegex.test(email)) { alertMsg.textContent = 'Informe um e-mail válido.'; alertError.classList.add('show'); return; }
+            if (!whatsapp) { alertMsg.textContent = 'Informe seu WhatsApp.'; alertError.classList.add('show'); return; }
+
+            isRegSubmitting = true;
+            btn.classList.add('loading');
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('cadastro.php', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome, email, whatsapp, csrf: '<?php echo $csrf; ?>' })
+                }).catch(() => null);
+
+                if (response) {
+                    const data = await response.json().catch(() => null);
+                    if (response.ok && data && data.success) {
+                        alertSuccess.classList.add('show');
+                        setTimeout(() => { window.location.href = data.redirect || 'pagamento.php'; }, 1200);
+                        return;
+                    }
+                    if (data && data.message) {
+                        alertMsg.textContent = data.message;
+                        alertError.classList.add('show');
+                        return;
+                    }
+                }
+                alertMsg.textContent = 'Erro ao conectar. Tente novamente.';
+                alertError.classList.add('show');
+            } catch (err) {
+                alertMsg.textContent = 'Erro ao conectar. Tente novamente.';
+                alertError.classList.add('show');
+            } finally {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+                isRegSubmitting = false;
+            }
+        }
 
         async function handleLogin(e) {
             e.preventDefault();
