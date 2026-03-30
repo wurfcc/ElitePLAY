@@ -57,7 +57,7 @@ function auth_cookie_domain(): string {
         return '';
     }
 
-    if (str_starts_with($host, 'www.')) {
+    if (substr($host, 0, 4) === 'www.') {
         $host = substr($host, 4);
     }
 
@@ -105,7 +105,7 @@ function ip_cliente(): string {
 
 // --- Verifica se IP ou email_hash estão bloqueados por rate-limit ---
 // Retorna false se ok, ou o número de segundos bloqueado
-function verificar_rate_limit(string $ip, string $email): int|false {
+function verificar_rate_limit(string $ip, string $email) {
     $pdo = db();
     $ip_hash    = hash('sha256', $ip);
     $email_hash = hash('sha256', strtolower(trim($email)));
@@ -191,27 +191,47 @@ function criar_sessao(int $usuario_id, string $ip, ?string $user_expires_at = nu
 
 // --- Valida o cookie de sessão e retorna os dados do usuário ou null ---
 function validar_sessao_cookie(): ?array {
-    $token_raw = $_COOKIE[AUTH_COOKIE_NAME] ?? '';
-    if (empty($token_raw)) {
+    // Coleta TODOS os valores do cookie (lida com duplicatas no browser)
+    $rawHeader = $_SERVER['HTTP_COOKIE'] ?? '';
+    $tokenCandidates = [];
+    foreach (explode(';', $rawHeader) as $part) {
+        $part = trim($part);
+        $eq = strpos($part, '=');
+        if ($eq === false) continue;
+        $name = trim(substr($part, 0, $eq));
+        $val  = trim(substr($part, $eq + 1));
+        if ($name === AUTH_COOKIE_NAME && $val !== '') {
+            $tokenCandidates[] = $val;
+        }
+    }
+    // Garante que o valor lido pelo PHP também entra (pode diferir da ordem acima)
+    $phpCookie = $_COOKIE[AUTH_COOKIE_NAME] ?? '';
+    if ($phpCookie !== '' && !in_array($phpCookie, $tokenCandidates, true)) {
+        array_unshift($tokenCandidates, $phpCookie);
+    }
+    if (empty($tokenCandidates)) {
         return null;
     }
 
-    $token_hash = hash('sha256', $token_raw);
     $pdo = db();
-
-    $stmt = $pdo->prepare('
-        SELECT s.id AS sessao_id, s.usuario_id, s.ip, s.expires_at, s.user_expires_at,
-               u.email, u.ativo, u.is_admin, u.dias_acesso, u.acesso_expira_em
-        FROM sessoes s
-        JOIN usuarios u ON u.id = s.usuario_id
-        WHERE s.token_hash = ?
-          AND s.revogada   = 0
-          AND s.expires_at > NOW()
-          AND u.ativo      = 1
-        LIMIT 1
-    ');
-    $stmt->execute([$token_hash]);
-    $sessao = $stmt->fetch();
+    $sessao = null;
+    foreach ($tokenCandidates as $token_raw) {
+        $token_hash = hash('sha256', $token_raw);
+        $stmt = $pdo->prepare('
+            SELECT s.id AS sessao_id, s.usuario_id, s.ip, s.expires_at, s.user_expires_at,
+                   u.email, u.ativo, u.is_admin, u.dias_acesso, u.acesso_expira_em
+            FROM sessoes s
+            JOIN usuarios u ON u.id = s.usuario_id
+            WHERE s.token_hash = ?
+              AND s.revogada   = 0
+              AND s.expires_at > NOW()
+              AND u.ativo      = 1
+            LIMIT 1
+        ');
+        $stmt->execute([$token_hash]);
+        $sessao = $stmt->fetch();
+        if ($sessao) break;
+    }
 
     if (!$sessao) {
         return null;

@@ -4,8 +4,8 @@
 // ============================================================
 
 // --- Detecção de ambiente (local vs produção) ---
-$_isLocal = in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1', '::1'], true)
-         || ($_SERVER['SERVER_ADDR'] ?? '') === '127.0.0.1';
+// HTTP_HOST é sempre o domínio real (eliteplay.one em prod, localhost aqui)
+$_isLocal = in_array(strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''), ['localhost', '127.0.0.1', '::1'], true);
 
 // --- Banco de Dados ---
 define('DB_HOST',    'localhost');
