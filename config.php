@@ -9,8 +9,8 @@ $_isLocal = in_array(strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 
 
 // --- Banco de Dados ---
 define('DB_HOST',    'localhost');
-define('DB_NAME',    $_isLocal ? 'eliteplay'            : 'murilo_eliteplay');
-define('DB_USER',    $_isLocal ? 'root'                 : 'murilo_eliteplayuser');
+define('DB_NAME',    $_isLocal ? 'eliteplay' : 'eliteplay_eliteplay');
+define('DB_USER',    $_isLocal ? 'root' : 'eliteplay_eliteplayuser');
 define('DB_PASS',    $_isLocal ? ''                     : 'gpxAmODumpegCn7J');
 define('DB_CHARSET', 'utf8mb4');
 
