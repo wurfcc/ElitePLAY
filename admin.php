@@ -1165,8 +1165,18 @@ $csrfToken = csrf_token();
     async function carregarUsuarios() {
         const wrap = document.getElementById('usuarios-table-wrap');
         wrap.innerHTML = '<div class="empty-state"><p>Carregando...</p></div>';
-        const users = await fetch('admin_api.php?action=list_users').then(r=>r.json()).catch(()=>[]);
-        usuariosCache = Array.isArray(users) ? users : [];
+        const usersRaw = await fetch('admin_api.php?action=list_users').then(r=>r.json()).catch(()=>[]);
+        const users = Array.isArray(usersRaw)
+            ? usersRaw.map(u => ({
+                ...u,
+                id: Number(u.id),
+                is_admin: Number(u.is_admin) === 1,
+                ativo: Number(u.ativo) === 1,
+                is_online: Number(u.is_online) > 0,
+                dias_acesso: u.dias_acesso === null || u.dias_acesso === '' ? null : Number(u.dias_acesso),
+            }))
+            : [];
+        usuariosCache = users;
 
         if (!users.length) {
             wrap.innerHTML = '<div class="empty-state"><p>Nenhum usuário cadastrado.</p></div>';
@@ -1191,7 +1201,8 @@ $csrfToken = csrf_token();
                 <td>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <input type="number" min="0" value="${u.dias_acesso ?? ''}" 
-                               placeholder="∞" style="width:70px; padding:6px 8px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px;"
+                               placeholder="∞" title="Deixe vazio para acesso infinito"
+                               style="width:70px; padding:6px 8px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px;"
                                onclick="event.stopPropagation()"
                                onchange="salvarDiasAcesso(${u.id}, this.value, this)"
                                ${u.is_admin ? 'disabled' : ''}>
@@ -1250,7 +1261,7 @@ $csrfToken = csrf_token();
     }
 
     async function salvarDiasAcesso(id, dias, input) {
-        const diasInt = dias === '' ? null : parseInt(dias);
+        const diasInt = dias === '' ? null : parseInt(dias, 10);
         if (diasInt !== null && isNaN(diasInt)) {
             alert('Valor inválido');
             return;

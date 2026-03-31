@@ -29,9 +29,12 @@ if (!$me || !$me['is_admin']) {
     exit;
 }
 
+// Define ação antes de validar CSRF
+$action = $_GET['action'] ?? '';
+
 // --- Verificação CSRF para ações POST ---
 $csrf_safe_actions = ['get_overrides', 'online_count', 'list_users', 'active_sessions'];
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !in_array($action, $csrf_safe_actions)) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !in_array($action, $csrf_safe_actions, true)) {
     $token_recebido = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? '';
     if (!validar_csrf($token_recebido)) {
         http_response_code(403);
@@ -42,8 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !in_array($action, $csrf_safe_actio
 
 // Adiciona update_dias_acesso e save_override à lista de ações que precisam de CSRF
 // (Já coberto acima, pois não está em csrf_safe_actions)
-
-$action = $_GET['action'] ?? '';
 
 switch ($action) {
 
@@ -111,7 +112,14 @@ switch ($action) {
             break;
         }
         
-        // Valida dias: null = sem limite, 0 = bloqueado, >0 = dias de acesso
+        // Normaliza: vazio/null = sem limite (vitalício), 0 = bloqueado, >0 = dias de acesso
+        if ($dias === '' || $dias === false) {
+            $dias = null;
+        }
+        if (is_string($dias) && is_numeric($dias)) {
+            $dias = (int)$dias;
+        }
+
         if ($dias !== null && (!is_int($dias) || $dias < 0)) {
             echo json_encode(['error' => 'Dias inválido.']);
             break;
