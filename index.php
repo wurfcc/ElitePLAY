@@ -814,6 +814,41 @@ $viewerProfile = [
             cursor: default;
         }
 
+        @property --soon-angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+
+        .game-card.soon-start {
+            --soon-angle: 0deg;
+            border: 1px solid transparent;
+            background:
+                linear-gradient(#0D0F12, #0D0F12) padding-box,
+                conic-gradient(from var(--soon-angle), rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.35), rgba(59, 130, 246, 1), rgba(255, 255, 255, 0.45), rgba(59, 130, 246, 0.05)) border-box;
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.28), 0 0 20px rgba(59, 130, 246, 0.22);
+            animation: soon-border-rotate 2.6s linear infinite, soon-border-glow 1.8s ease-in-out infinite;
+        }
+
+        .game-card.soon-start:hover {
+            background:
+                linear-gradient(#0D0F12, #0D0F12) padding-box,
+                conic-gradient(from var(--soon-angle), rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.4), rgba(59, 130, 246, 1), rgba(255, 255, 255, 0.5), rgba(59, 130, 246, 0.08)) border-box;
+        }
+
+        @keyframes soon-border-rotate {
+            to { --soon-angle: 360deg; }
+        }
+
+        @keyframes soon-border-glow {
+            0%, 100% {
+                box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.28), 0 0 16px rgba(59, 130, 246, 0.18);
+            }
+            50% {
+                box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.42), 0 0 26px rgba(59, 130, 246, 0.34);
+            }
+        }
+
         .game-card:hover {
             transform: translateY(-5px);
             border-color: rgba(255, 255, 255, 0.2);
@@ -1521,7 +1556,9 @@ $viewerProfile = [
                 // Pega TODOS os links de jogos (qualquer liga)
                 const allLinks = Array.from(doc.querySelectorAll('a[href]')).filter(a => {
                     const href = a.getAttribute('href') || '';
-                    return href.includes('.html') && a.querySelector('.status-name') && a.querySelector('h5');
+                    const hrefLower = href.toLowerCase();
+                    const blockedByHref = hrefLower.includes('sub-20') || hrefLower.includes('sub20') || hrefLower.includes('feminino');
+                    return !blockedByHref && href.includes('.html') && a.querySelector('.status-name') && a.querySelector('h5');
                 });
 
                 const results = allLinks.map(match => {
@@ -1831,6 +1868,10 @@ $viewerProfile = [
             }
 
             const initialPlayerUrl = finalStreams.length > 0 ? finalStreams[0].url : playerUrlOpcao1;
+            const startTs = Number(jogo.data?.timer?.start || 0);
+            const msToStart = startTs > 0 ? (startTs * 1000) - Date.now() : 0;
+            const isStartingSoon = !isLive && !isFinished && msToStart > 0 && msToStart <= 60 * 60 * 1000;
+            const gameCardClass = `game-card${isStartingSoon ? ' soon-start' : ''}`;
 
             const competition = jogo.scrapedLeague || jogo.data?.league || 'Futebol';
             const competitionSlug = slugify(competition);
@@ -1847,7 +1888,7 @@ $viewerProfile = [
             const bannerStyle = matchedBanner ? `style="background-image: url('api jogos/${matchedBanner.img}');"` : '';
 
             return `
-                <div class="game-card">
+                <div class="${gameCardClass}">
                     <div class="card-banner" ${bannerStyle}>
                         <div class="banner-overlay"></div>
                         <span class="banner-title">${competition}</span>
