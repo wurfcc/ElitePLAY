@@ -1557,7 +1557,7 @@ $viewerProfile = [
                 const allLinks = Array.from(doc.querySelectorAll('a[href]')).filter(a => {
                     const href = a.getAttribute('href') || '';
                     const hrefLower = href.toLowerCase();
-                    const blockedByHref = hrefLower.includes('sub-20') || hrefLower.includes('sub20') || hrefLower.includes('feminino');
+                    const blockedByHref = hrefLower.includes('sub-20') || hrefLower.includes('sub20');
                     return !blockedByHref && href.includes('.html') && a.querySelector('.status-name') && a.querySelector('h5');
                 });
 
