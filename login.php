@@ -99,14 +99,6 @@ $csrf = csrf_token();
             font-weight: 300;
         }
 
-        .logo-tagline {
-            margin-top: 6px;
-            font-size: 13px;
-            color: var(--text-muted);
-            font-weight: 400;
-            letter-spacing: 0.3px;
-        }
-
         /* Card */
         .login-card {
             background: var(--bg-card);
@@ -116,19 +108,6 @@ $csrf = csrf_token();
             backdrop-filter: blur(var(--glass-blur));
             -webkit-backdrop-filter: blur(var(--glass-blur));
             box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
-        }
-
-        .card-title {
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 6px;
-        }
-
-        .card-subtitle {
-            font-size: 14px;
-            color: var(--text-muted);
-            margin-bottom: 28px;
-            line-height: 1.5;
         }
 
         /* Form */
@@ -333,7 +312,52 @@ $csrf = csrf_token();
 
         @media (max-width: 480px) {
             .login-card { padding: 28px 20px; }
-            .card-title { font-size: 19px; }
+            .tab-btn {
+                flex: 1;
+                padding: 12px;
+                border: none;
+                background: transparent;
+                color: var(--text-muted);
+                border-radius: 7px;
+                font-size: 16px;
+                font-weight: 600;
+                font-family: 'Outfit', sans-serif;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .btn-submit {
+                width: 100%;
+                padding: 15px;
+                background: linear-gradient(135deg, #3b82f6, #2563eb);
+                color: white;
+                border: none;
+                border-radius: 12px;
+                font-size: 16px;
+                text-transform: uppercase;
+                font-weight: 700;
+                font-family: 'Outfit', sans-serif;
+                cursor: pointer;
+                transition: all 0.25s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                letter-spacing: 0.3px;
+                position: relative;
+                overflow: hidden;
+            }
+            .form-input {
+                width: 100%;
+                background-color: var(--bg-input);
+                border: 1px solid rgba(255, 255, 255, 0.07);
+                border-radius: 12px;
+                padding: 18px 16px 18px 44px;
+                color: var(--text-light);
+                font-size: 18px;
+                font-family: 'Outfit', sans-serif;
+                outline: none;
+                transition: border-color 0.25s, box-shadow 0.25s;
+            }
         }
 
         /* Tabs */
@@ -377,7 +401,6 @@ $csrf = csrf_token();
 
         <div class="logo-area">
             <img src="imagens/elitelogo.webp" alt="ElitePLAY" class="logo" style="height: 50px;">
-            <p class="logo-tagline">Sua plataforma de canais premium</p>
         </div>
 
         <div class="login-card">
@@ -386,9 +409,6 @@ $csrf = csrf_token();
                 <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">Entrar</button>
                 <button class="tab-btn" id="tab-cadastro" onclick="switchTab('cadastro')">Criar Conta</button>
             </div>
-
-            <h1 class="card-title" id="card-title">Bem-vindo de volta 👋</h1>
-            <p class="card-subtitle" id="card-subtitle">Informe seu e-mail para acessar sua conta.</p>
 
             <div class="alert error" id="alert-error">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -500,10 +520,6 @@ $csrf = csrf_token();
             document.getElementById('tab-cadastro').classList.toggle('active', !isLogin);
             document.getElementById('alert-error').classList.remove('show');
             document.getElementById('alert-success').classList.remove('show');
-            document.getElementById('card-title').textContent    = isLogin ? 'Bem-vindo de volta 👋' : 'Criar conta 🚀';
-            document.getElementById('card-subtitle').textContent = isLogin
-                ? 'Informe seu e-mail para acessar sua conta.'
-                : 'Preencha os dados abaixo para começar.';
             document.getElementById('info-text').textContent = isLogin
                 ? 'O acesso é exclusivo para assinantes cadastrados. Sem senha necessária — utilizamos apenas o e-mail para verificar sua assinatura.'
                 : 'Após criar sua conta, você será redirecionado para escolher seu plano de acesso.';

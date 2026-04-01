@@ -90,14 +90,21 @@ $viewerProfile = [
         }
 
         .logo {
-            font-size: 24px;
-            font-weight: 800;
-            letter-spacing: 0.6px;
+            display: block;
+            width: auto;
+            height: 35px;
         }
 
         .logo span {
             color: var(--text-muted);
             font-weight: normal;
+        }
+
+        .header-brand-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            min-width: 0;
         }
 
         .header-icons {
@@ -438,8 +445,31 @@ $viewerProfile = [
         }
 
         @media (max-width: 768px) {
+            header {
+                align-items: center;
+                gap: 12px;
+            }
+
+            .header-brand-row {
+                flex: 1;
+                gap: 10px;
+            }
+
+            .logo {
+                width: 75%;
+                height: auto;
+            }
+
+            .header-icons {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                margin-left: auto;
+                flex-shrink: 0;
+            }
+
             .sidebar {
-                transform: translateX(-100%);
+                transform: translateX(-105%);
                 background: #0f111a; /* Cor sólida para mobile */
                 z-index: 300;
                 top: 0;
@@ -452,6 +482,14 @@ $viewerProfile = [
             }
             .sidebar-toggle {
                 display: flex;
+                background: transparent;
+                border: none;
+                color: white;
+                font-size: 30px;
+                cursor: pointer;
+                padding: 0px;
+                order: -1;
+                margin-top: -4px;
             }
             .close-sidebar {
                 display: block;
@@ -1071,13 +1109,31 @@ $viewerProfile = [
                 height: 30px;
             }
             .banner-title {
-                font-size: 0.60rem;
+                font-size: 0.75rem;
+                color: #94a3b8;
+                font-weight: 400;
+            }
+            .teams-premium-container {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1rem;
+                margin-bottom: 10px;
+                margin-top: 0;
+                padding: 0;
             }
             .status-badge, .live-indicator {
                 padding: 0.15rem 0.55rem;
             }
+            .game-datetime .game-date,
+            .game-date {
+                font-size: 0.75rem;
+            }
             .game-datetime .game-time {
-                font-size: 1.1rem;
+                font-size: 1.5rem;
+            }
+            .game-time {
+                font-size: 1.5rem;
             }
             .watch-premium-button {
                 font-size: 1.1rem;
@@ -1114,9 +1170,9 @@ $viewerProfile = [
     </div>
 
     <header>
-        <div style="display: flex; align-items: center; gap: 15px;">
+        <div class="header-brand-row">
             <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-            <img src="imagens/elitelogo.webp" alt="ElitePLAY" class="logo" style="height: 35px;">
+            <img src="imagens/elitelogo.webp" alt="ElitePLAY" class="logo">
         </div>
         <div class="search-container">
             <input type="text" class="search-input" placeholder="Pesquisar canais ou eventos...">

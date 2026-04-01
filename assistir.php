@@ -221,15 +221,6 @@ if (empty($iframe_url)) {
             background: linear-gradient(135deg, var(--primary-blue), #4f5bf5, #2563eb) !important;
         }
 
-        /* Footer */
-        .player-footer {
-            padding: 20px;
-            font-size: 12px;
-            color: var(--text-muted);
-            text-align: center;
-            margin-top: auto;
-        }
-
         /* Ajustes Específicos para Celular */
         @media (max-width: 768px) {
             .player-wrapper {
@@ -314,10 +305,6 @@ if (empty($iframe_url)) {
                 <?php endif; ?>
             <?php endif; ?>
         </div>
-    </div>
-
-    <div class="player-footer">
-        ElitePLAY &copy; 2026 - Transmitindo em Alta Definição
     </div>
 
     <script>
