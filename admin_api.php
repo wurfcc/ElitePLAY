@@ -299,7 +299,40 @@ switch ($action) {
 
     // ---- Banners da home (carrossel) ----
     case 'get_home_banners':
-        echo json_encode(load_home_banners(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        echo json_encode([
+            'items' => load_home_banners(),
+            'settings' => load_home_banners_settings(),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        break;
+
+    case 'save_home_banners_visibility':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['error' => 'Método inválido.']);
+            exit;
+        }
+
+        $body = json_decode(file_get_contents('php://input'), true);
+        $enabled = isset($body['enabled']) ? (bool)$body['enabled'] : true;
+
+        if (!save_home_banners_settings(['enabled' => $enabled])) {
+            $dataDir = __DIR__ . '/data';
+            $settingsFile = __DIR__ . '/data/home_banners_settings.json';
+            $diag = sprintf(
+                'data_dir_writable=%s, settings_file_exists=%s, settings_file_writable=%s',
+                is_writable($dataDir) ? '1' : '0',
+                is_file($settingsFile) ? '1' : '0',
+                is_writable($settingsFile) ? '1' : '0'
+            );
+            http_response_code(500);
+            echo json_encode(['error' => 'Não foi possível salvar a visibilidade do carrossel. ' . $diag]);
+            break;
+        }
+
+        echo json_encode([
+            'ok' => true,
+            'settings' => load_home_banners_settings(),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         break;
 
     case 'save_home_banners':
@@ -315,6 +348,21 @@ switch ($action) {
             http_response_code(400);
             echo json_encode(['error' => 'Payload de banners inválido.']);
             break;
+        }
+
+        $carouselEnabled = isset($_POST['carousel_enabled']) ? (string)$_POST['carousel_enabled'] === '1' : true;
+        $settingsWarning = '';
+
+        if (!save_home_banners_settings(['enabled' => $carouselEnabled])) {
+            $dataDir = __DIR__ . '/data';
+            $settingsFile = __DIR__ . '/data/home_banners_settings.json';
+            $diag = sprintf(
+                'data_dir_writable=%s, settings_file_exists=%s, settings_file_writable=%s',
+                is_writable($dataDir) ? '1' : '0',
+                is_file($settingsFile) ? '1' : '0',
+                is_writable($settingsFile) ? '1' : '0'
+            );
+            $settingsWarning = 'As configurações de visibilidade não foram salvas. ' . $diag;
         }
 
         $currentBanners = load_home_banners();
@@ -402,14 +450,24 @@ switch ($action) {
         }
 
         if (!save_home_banners($nextBanners)) {
+            $dataDir = __DIR__ . '/data';
+            $jsonFile = __DIR__ . '/data/home_banners.json';
+            $diag = sprintf(
+                'data_dir_writable=%s, file_exists=%s, file_writable=%s',
+                is_writable($dataDir) ? '1' : '0',
+                is_file($jsonFile) ? '1' : '0',
+                is_writable($jsonFile) ? '1' : '0'
+            );
             http_response_code(500);
-            echo json_encode(['error' => 'Não foi possível salvar os banners.']);
+            echo json_encode(['error' => 'Não foi possível salvar os banners. ' . $diag]);
             break;
         }
 
         echo json_encode([
             'ok' => true,
             'banners' => load_home_banners(),
+            'settings' => load_home_banners_settings(),
+            'warning' => $settingsWarning,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         break;
 

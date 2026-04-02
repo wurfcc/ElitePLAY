@@ -688,6 +688,42 @@ $csrfToken = csrf_token();
             gap: 16px;
         }
 
+        .carousel-config-row {
+            padding: 14px 22px 0;
+        }
+
+        .carousel-toggle-card {
+            border: 1px solid rgba(59,130,246,0.25);
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(30,58,138,0.18), rgba(15,23,42,0.55));
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .carousel-toggle-card label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #dbeafe;
+            font-weight: 600;
+        }
+
+        .carousel-toggle-card small {
+            color: #93c5fd;
+            font-size: 12px;
+        }
+
+        .carousel-guide {
+            margin-top: 10px;
+            color: var(--text-muted);
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
         .banner-slot-card {
             border: 1px solid var(--border);
             border-radius: 14px;
@@ -735,6 +771,42 @@ $csrfToken = csrf_token();
 
         .banner-slot-head strong {
             font-size: 15px;
+        }
+
+        .banner-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .banner-status-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        .status-pill.ok {
+            background: rgba(34,197,94,0.16);
+            border: 1px solid rgba(34,197,94,0.35);
+            color: #86efac;
+        }
+
+        .status-pill.warn {
+            background: rgba(251,191,36,0.14);
+            border: 1px solid rgba(251,191,36,0.35);
+            color: #fde68a;
         }
 
         .banner-slot-meta {
@@ -819,6 +891,12 @@ $csrfToken = csrf_token();
             cursor: pointer;
         }
 
+        .banner-field-help {
+            margin-top: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
         .banner-remove-row {
             display: flex;
             flex-wrap: wrap;
@@ -836,6 +914,21 @@ $csrfToken = csrf_token();
         .banner-save-row {
             display: flex;
             justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            border-top: 1px solid var(--border);
+            background: rgba(15,23,42,0.5);
+            border-radius: 0 0 14px 14px;
+        }
+
+        .dirty-indicator {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-right: auto;
+        }
+
+        .dirty-indicator.pending {
+            color: #facc15;
         }
 
         .empty-state {
@@ -1026,6 +1119,20 @@ $csrfToken = csrf_token();
                 padding: 14px;
             }
 
+            .carousel-config-row {
+                padding: 12px 14px 0;
+            }
+
+            .carousel-toggle-card {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .banner-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+
             .banner-preview-grid,
             .banner-input-grid {
                 grid-template-columns: 1fr;
@@ -1034,6 +1141,12 @@ $csrfToken = csrf_token();
             .banner-save-row .btn {
                 width: 100%;
                 justify-content: center;
+            }
+
+            .dirty-indicator {
+                width: 100%;
+                margin-right: 0;
+                text-align: center;
             }
 
             .ovr-suggestions { max-height: 180px; }
@@ -1151,18 +1264,29 @@ $csrfToken = csrf_token();
     <section class="section" id="section-carrossel">
         <div class="page-header">
             <h1>Carrossel da Home</h1>
-            <p>Gerencie 3 banners com imagem desktop, mobile e link de destino</p>
+            <p>Gerencie banners com imagem desktop, mobile, ordem e visibilidade</p>
         </div>
         <div class="card">
             <div class="card-header">
                 <h2>Banners acima dos jogos ao vivo</h2>
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                    <span class="badge badge-slate">Desktop 16:2 • Mobile 16:4</span>
+                    <span class="badge badge-slate">Desktop 16:2 • Mobile 4:3</span>
                     <button class="btn btn-primary btn-sm" type="button" onclick="adicionarNovoBanner()">Adicionar Novo Banner</button>
                 </div>
             </div>
+            <div class="carousel-config-row">
+                <div class="carousel-toggle-card">
+                    <label>
+                        <input type="checkbox" id="carousel-enabled-toggle" onchange="onCarouselVisibilityToggle()" style="accent-color:#3b82f6; width:16px; height:16px;">
+                        Exibir carrossel na index.php
+                    </label>
+                    <small>Desative para ocultar os banners sem apagar imagens ou links.</small>
+                </div>
+                <div class="carousel-guide">Dica: arraste os cards para definir a ordem de exibição e clique em “Salvar Banners” para publicar.</div>
+            </div>
             <div class="banner-editor-grid" id="banner-editor-grid"></div>
             <div class="banner-save-row" style="padding: 0 22px 22px;">
+                <span class="dirty-indicator" id="carousel-dirty-indicator">Nenhuma alteração pendente</span>
                 <button class="btn btn-primary" id="btn-salvar-carrossel" onclick="salvarCarrosselBanners()">Salvar Banners</button>
             </div>
         </div>
@@ -1297,6 +1421,8 @@ $csrfToken = csrf_token();
     let homeBannersCache = [];
     let homeBannerCounter = 0;
     let draggingBannerId = '';
+    let homeCarouselEnabled = true;
+    let homeCarouselDirty = false;
 
     function escapeHtml(value) {
         return String(value || '')
@@ -1310,6 +1436,51 @@ $csrfToken = csrf_token();
     function createLocalBannerId() {
         homeBannerCounter += 1;
         return `bnr_${Date.now()}_${homeBannerCounter}`;
+    }
+
+    function setCarouselDirty(flag) {
+        homeCarouselDirty = !!flag;
+        const indicator = document.getElementById('carousel-dirty-indicator');
+        const saveBtn = document.getElementById('btn-salvar-carrossel');
+        if (indicator) {
+            indicator.classList.toggle('pending', homeCarouselDirty);
+            indicator.textContent = homeCarouselDirty ? 'Alterações pendentes' : 'Nenhuma alteração pendente';
+        }
+        if (saveBtn) {
+            saveBtn.textContent = homeCarouselDirty ? 'Salvar Alterações' : 'Salvar Banners';
+        }
+    }
+
+    async function onCarouselVisibilityToggle() {
+        const toggle = document.getElementById('carousel-enabled-toggle');
+        if (!toggle) return;
+
+        const nextEnabled = !!toggle.checked;
+        const previousEnabled = homeCarouselEnabled;
+        homeCarouselEnabled = nextEnabled;
+        toggle.disabled = true;
+
+        const res = await fetch('admin_api.php?action=save_home_banners_visibility', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+            },
+            body: JSON.stringify({ enabled: nextEnabled })
+        }).then(r => r.json()).catch(() => null);
+
+        toggle.disabled = false;
+
+        if (res?.ok) {
+            homeCarouselEnabled = res.settings?.enabled !== false;
+            toggle.checked = homeCarouselEnabled;
+            alert(homeCarouselEnabled ? 'Carrossel exibido na index.php.' : 'Carrossel ocultado da index.php.');
+            return;
+        }
+
+        homeCarouselEnabled = previousEnabled;
+        toggle.checked = previousEnabled;
+        alert(res?.error || 'Não foi possível salvar a visibilidade do carrossel.');
     }
 
     function normalizeBannerClient(item = {}) {
@@ -1352,6 +1523,9 @@ $csrfToken = csrf_token();
             const desktop = getLiveBannerImage(item, 'desktop');
             const mobile = getLiveBannerImage(item, 'mobile');
             const bannerId = escapeHtml(item.id);
+            const hasDesktop = !!desktop;
+            const hasMobile = !!mobile;
+            const hasLink = String(item.link || '').trim() !== '';
 
             return `
                 <div class="banner-slot-card" data-banner-id="${bannerId}">
@@ -1360,11 +1534,18 @@ $csrfToken = csrf_token();
                             <span class="banner-drag-handle" title="Arrastar para reordenar">⋮⋮</span>
                             <strong class="banner-slot-title">Banner ${index + 1}</strong>
                         </div>
-                        <button class="btn btn-danger btn-sm" type="button" onclick="excluirBanner('${bannerId}')">Excluir banner</button>
+                        <div class="banner-actions">
+                            <button class="btn btn-danger btn-sm" type="button" onclick="excluirBanner('${bannerId}')">Excluir banner</button>
+                        </div>
+                    </div>
+                    <div class="banner-status-row">
+                        <span class="status-pill ${hasDesktop ? 'ok' : 'warn'}">Desktop ${hasDesktop ? 'ok' : 'vazio'}</span>
+                        <span class="status-pill ${hasMobile ? 'ok' : 'warn'}">Mobile ${hasMobile ? 'ok' : 'vazio'}</span>
+                        <span class="status-pill ${hasLink ? 'ok' : 'warn'}">Link ${hasLink ? 'ok' : 'vazio'}</span>
                     </div>
                     <div class="banner-preview-grid">
                         ${bannerPreviewMarkup('Desktop', desktop, `banner-preview-desktop-${bannerId}`, '16:2')}
-                        ${bannerPreviewMarkup('Mobile', mobile, `banner-preview-mobile-${bannerId}`, '16:4')}
+                        ${bannerPreviewMarkup('Mobile', mobile, `banner-preview-mobile-${bannerId}`, '4:3')}
                     </div>
                     <div class="banner-link-field">
                         <label for="banner-link-${bannerId}">Link de destino</label>
@@ -1374,11 +1555,13 @@ $csrfToken = csrf_token();
                         <div class="banner-field">
                             <label for="banner-desktop-${bannerId}">Imagem desktop</label>
                             <input type="file" id="banner-desktop-${bannerId}" accept="image/png,image/jpeg,image/webp" onchange="previewBannerFile(this, '${bannerId}', 'desktop')">
+                            <div class="banner-field-help">Recomendado: 1600x200 (16:2).</div>
                             <button class="btn btn-ghost btn-sm" type="button" style="margin-top:8px;" onclick="removerImagemBanner('${bannerId}', 'desktop')">Excluir imagem desktop</button>
                         </div>
                         <div class="banner-field">
                             <label for="banner-mobile-${bannerId}">Imagem mobile</label>
                             <input type="file" id="banner-mobile-${bannerId}" accept="image/png,image/jpeg,image/webp" onchange="previewBannerFile(this, '${bannerId}', 'mobile')">
+                            <div class="banner-field-help">Recomendado: 1200x900 (4:3).</div>
                             <button class="btn btn-ghost btn-sm" type="button" style="margin-top:8px;" onclick="removerImagemBanner('${bannerId}', 'mobile')">Excluir imagem mobile</button>
                         </div>
                     </div>
@@ -1450,6 +1633,7 @@ $csrfToken = csrf_token();
                 }
 
                 moveBannerInCache(dragId, targetId);
+                setCarouselDirty(true);
 
                 const dragCard = cards.find(c => (c.dataset.bannerId || '') === dragId);
                 const targetCard = cards.find(c => (c.dataset.bannerId || '') === targetId);
@@ -1465,16 +1649,19 @@ $csrfToken = csrf_token();
 
     function atualizarLinkBanner(bannerId, value) {
         homeBannersCache = homeBannersCache.map(item => item.id === bannerId ? { ...item, link: String(value || '') } : item);
+        setCarouselDirty(true);
     }
 
     function adicionarNovoBanner() {
         homeBannersCache.push(normalizeBannerClient({}));
         renderBannerEditor();
+        setCarouselDirty(true);
     }
 
     function excluirBanner(bannerId) {
         homeBannersCache = homeBannersCache.filter(item => item.id !== bannerId);
         renderBannerEditor();
+        setCarouselDirty(true);
     }
 
     function removerImagemBanner(bannerId, variant) {
@@ -1498,6 +1685,7 @@ $csrfToken = csrf_token();
             empty.textContent = 'Sem imagem';
             targetEl.replaceWith(empty);
         }
+        setCarouselDirty(true);
     }
 
     function previewBannerFile(input, bannerId, variant) {
@@ -1512,6 +1700,7 @@ $csrfToken = csrf_token();
                 target.remove_mobile = false;
             }
         }
+        setCarouselDirty(true);
 
         const targetId = `banner-preview-${variant}-${bannerId}`;
         const targetEl = document.getElementById(targetId);
@@ -1529,12 +1718,22 @@ $csrfToken = csrf_token();
         const grid = document.getElementById('banner-editor-grid');
         grid.innerHTML = '<div class="empty-state"><p>Carregando banners...</p></div>';
 
-        const banners = await fetch(`admin_api.php?action=get_home_banners&_t=${Date.now()}`, { cache: 'no-store' })
+        const result = await fetch(`admin_api.php?action=get_home_banners&_t=${Date.now()}`, { cache: 'no-store' })
             .then(r => r.json())
-            .catch(() => []);
+            .catch(() => null);
 
-        homeBannersCache = Array.isArray(banners) ? banners.map(normalizeBannerClient) : [];
+        const banners = Array.isArray(result?.items) ? result.items : [];
+        const settings = (result && typeof result === 'object' && result.settings) ? result.settings : {};
+        homeCarouselEnabled = settings.enabled !== false;
+
+        const toggle = document.getElementById('carousel-enabled-toggle');
+        if (toggle) {
+            toggle.checked = homeCarouselEnabled;
+        }
+
+        homeBannersCache = banners.map(normalizeBannerClient);
         renderBannerEditor();
+        setCarouselDirty(false);
     }
 
     async function salvarCarrosselBanners() {
@@ -1551,6 +1750,8 @@ $csrfToken = csrf_token();
             remove_mobile: !!item.remove_mobile,
         }));
         fd.append('banners_payload', JSON.stringify(payload));
+        const toggle = document.getElementById('carousel-enabled-toggle');
+        fd.append('carousel_enabled', toggle && toggle.checked ? '1' : '0');
 
         homeBannersCache.forEach(item => {
             const desktopFile = document.getElementById(`banner-desktop-${item.id}`)?.files?.[0] || null;
@@ -1570,8 +1771,17 @@ $csrfToken = csrf_token();
 
         if (res?.ok) {
             homeBannersCache = Array.isArray(res.banners) ? res.banners.map(normalizeBannerClient) : [];
+            homeCarouselEnabled = res.settings?.enabled !== false;
+            if (toggle) {
+                toggle.checked = homeCarouselEnabled;
+            }
             renderBannerEditor();
-            alert('Banners atualizados com sucesso.');
+            setCarouselDirty(false);
+            if (res.warning) {
+                alert(`Banners salvos com aviso: ${res.warning}`);
+            } else {
+                alert('Banners atualizados com sucesso.');
+            }
         } else {
             alert(res?.error || 'Erro ao salvar banners.');
         }

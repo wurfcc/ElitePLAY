@@ -8,6 +8,8 @@ $viewerProfile = [
     'acesso_expira_em' => $usuario_logado['acesso_expira_em'] ?? null,
 ];
 $homeBanners = load_home_banners();
+$homeBannersSettings = load_home_banners_settings();
+$isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeBannersSettings['enabled'];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -583,7 +585,7 @@ $homeBanners = load_home_banners();
             }
 
             .home-banner-slide {
-                aspect-ratio: 16 / 4;
+                aspect-ratio: 4 / 3;
             }
 
             .home-banner-dots {
@@ -1357,7 +1359,7 @@ $homeBanners = load_home_banners();
             ];
         }
         ?>
-        <?php if (!empty($homeBannerSlides)): ?>
+        <?php if ($isHomeCarouselEnabled && !empty($homeBannerSlides)): ?>
         <div class="home-banner-carousel" id="home-banner-carousel">
             <div class="home-banner-track" id="home-banner-track">
                 <?php foreach ($homeBannerSlides as $slide): ?>
