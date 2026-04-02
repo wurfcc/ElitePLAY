@@ -109,9 +109,34 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             background: var(--panel-strong);
             border-right: 1px solid var(--line);
             display: grid;
-            grid-template-rows: auto auto 1fr auto;
+            grid-template-rows: auto 1fr auto;
             will-change: transform;
             contain: layout paint;
+        }
+
+        .menu-panel.with-category {
+            transform: translate3d(190px, 0, 0);
+        }
+
+        .category-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 182px;
+            z-index: 31;
+            transform: translate3d(-102%, 0, 0);
+            transition: transform 0.16s ease-out;
+            background: rgba(3, 12, 35, 0.98);
+            border-right: 1px solid var(--line);
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            will-change: transform;
+            contain: layout paint;
+        }
+
+        .category-panel.open {
+            transform: translate3d(0, 0, 0);
         }
 
         .games-panel {
@@ -152,25 +177,28 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             font-size: 12px;
         }
 
-        .category-row {
-            display: flex;
+        .category-list {
+            margin: 0;
+            padding: 10px;
+            list-style: none;
+            overflow-y: auto;
+            display: grid;
             gap: 8px;
-            padding: 12px 14px;
-            overflow-x: auto;
-            border-bottom: 1px solid var(--line);
+            contain: content;
         }
 
-        .category-row::-webkit-scrollbar { height: 4px; }
-        .category-row::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.35); border-radius: 999px; }
+        .category-list::-webkit-scrollbar { width: 5px; }
+        .category-list::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.35); border-radius: 999px; }
 
         .cat-btn {
             border: 1px solid rgba(148, 163, 184, 0.35);
             background: rgba(15, 23, 42, 0.75);
             color: var(--text);
-            border-radius: 999px;
-            padding: 7px 12px;
-            white-space: nowrap;
-            font-size: 12px;
+            border-radius: 10px;
+            padding: 10px 8px;
+            white-space: normal;
+            text-align: center;
+            font-size: 13px;
             font-weight: 600;
         }
 
@@ -308,20 +336,29 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             min-width: 0;
         }
 
+        .game-team .team-name {
+            font-size: 14px;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .game-team .team-score {
+            margin-left: auto;
+            font-size: 14px;
+            font-weight: 700;
+            color: #f8fafc;
+            min-width: 14px;
+            text-align: right;
+        }
+
         .game-team img {
             width: 28px;
             height: 28px;
             object-fit: contain;
             pointer-events: none;
             flex-shrink: 0;
-        }
-
-        .game-team span {
-            font-size: 14px;
-            font-weight: 600;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
         }
 
         .hint-pill {
@@ -436,13 +473,25 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             <h2>Canais ao vivo</h2>
             <p>Setas para navegar, Enter para assistir</p>
         </div>
-        <div class="category-row" id="category-row"></div>
         <ul class="channel-list" id="channel-list"></ul>
         <div class="menu-foot">
-            <span class="hint-pill">LEFT: abrir menu</span>
+            <span class="hint-pill">LEFT (2x): categorias</span>
             <span class="hint-pill">UP/DOWN: navegar</span>
             <span class="hint-pill">ENTER: reproduzir</span>
             <span class="hint-pill">RIGHT: jogos hoje</span>
+        </div>
+    </aside>
+
+    <aside class="category-panel" id="category-panel" aria-hidden="true">
+        <div class="menu-head">
+            <h2>Categorias</h2>
+            <p>Setas para escolher</p>
+        </div>
+        <ul class="category-list" id="category-list"></ul>
+        <div class="menu-foot">
+            <span class="hint-pill">UP/DOWN: navegar</span>
+            <span class="hint-pill">ENTER: filtrar</span>
+            <span class="hint-pill">RIGHT/BACK: fechar</span>
         </div>
     </aside>
 
@@ -476,11 +525,13 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
 <script>
     const CHANNELS_URL = 'proxy_embedtv.php?resource=channels';
+    const SCORES_URL = 'smarttv_scores_proxy.php';
     const SMARTTV_PAIR_API = 'smarttv_pair_api.php';
     const SMARTTV_TOKEN_KEY = 'eliteplay_smarttv_token';
     const menuPanel = document.getElementById('menu-panel');
+    const categoryPanel = document.getElementById('category-panel');
     const gamesPanel = document.getElementById('games-panel');
-    const categoryRow = document.getElementById('category-row');
+    const categoryList = document.getElementById('category-list');
     const channelList = document.getElementById('channel-list');
     const gamesList = document.getElementById('games-list');
     const topHud = document.querySelector('.top-hud');
@@ -501,6 +552,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     let selectedGameIndex = 0;
     let categoryNavIndex = 0;
     let menuOpen = false;
+    let categoryOpen = false;
     let gamesOpen = false;
     let lastOkAt = 0;
     let smartTvAuthorized = false;
@@ -512,6 +564,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     let gameItemEls = [];
     let categoryBtnEls = [];
 
+    const FIXED_CATEGORIES = ['TELECINE', 'PREMIERE', 'SPORTV', 'ESPN', 'ESPORTES', 'HBO', 'BBB', 'ABERTOS'];
+
     function showTopHudTemporarily() {
         if (!topHud) return;
 
@@ -522,7 +576,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         topHud.classList.remove('hidden');
         hudHideTimer = setTimeout(() => {
-            if (!menuOpen && !gamesOpen) {
+            if (!menuOpen && !gamesOpen && !categoryOpen) {
                 topHud.classList.add('hidden');
             }
         }, 3000);
@@ -655,11 +709,14 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 start,
                 end,
                 status: gameStatusByTimer(start, end),
+                statusText: '',
                 hourLabel: formatGameHour(start),
                 homeName: String(home.name || 'Time mandante'),
                 homeImg: String(home.image || ''),
+                homeScore: '',
                 awayName: String(away.name || 'Time visitante'),
                 awayImg: String(away.image || ''),
+                awayScore: '',
                 players: Array.isArray(item?.players) ? item.players : [],
             };
         }).sort((a, b) => a.start - b.start);
@@ -705,26 +762,121 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         return null;
     }
 
+    function channelMatchesFixedCategory(channel, categoryName) {
+        const name = normalizeText(channel?.name || '');
+        const cat = normalizeText(channel?.category || '');
+        const combined = `${name} ${cat}`;
+
+        if (categoryName === 'TELECINE') return combined.includes('telecine');
+        if (categoryName === 'PREMIERE') return combined.includes('premiere');
+        if (categoryName === 'SPORTV') return combined.includes('sportv') || combined.includes('sporto') || combined.includes('spor tv');
+        if (categoryName === 'ESPN') return combined.includes('espn');
+        if (categoryName === 'HBO') return combined.includes('hbo') || combined.includes('max');
+        if (categoryName === 'BBB') return combined.includes('bbb');
+
+        if (categoryName === 'ESPORTES') {
+            return (
+                combined.includes('sportv') || combined.includes('sporto') || combined.includes('premiere') || combined.includes('espn') ||
+                combined.includes('combate') || combined.includes('ufc') || combined.includes('futebol') || combined.includes('lutas') || combined.includes('esporte')
+            );
+        }
+
+        if (categoryName === 'ABERTOS') {
+            return (
+                combined.includes('globo') || combined.includes('sbt') || combined.includes('record') ||
+                combined.includes('band') || combined.includes('rede tv') || combined.includes('abertos')
+            );
+        }
+
+        return true;
+    }
+
+    async function fetchLiveScores() {
+        let html = '';
+        try {
+            const response = await fetch(`${SCORES_URL}?_t=${Date.now()}`, { cache: 'no-store' });
+            html = await response.text();
+        } catch (e) {
+            return [];
+        }
+
+        if (!html) return [];
+
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const links = Array.from(doc.querySelectorAll('a[href]')).filter(a => {
+                const href = String(a.getAttribute('href') || '').toLowerCase();
+                return href.includes('.html') && a.querySelector('.status-name') && a.querySelector('h5');
+            });
+
+            return links.map(match => {
+                const homeTeam = match.querySelector('h5.text-right.team_link')?.innerText?.trim()
+                    || match.querySelector('h5.text-right')?.innerText?.trim() || '';
+                const awayTeam = match.querySelector('h5.text-left.team_link')?.innerText?.trim()
+                    || match.querySelector('h5.text-left')?.innerText?.trim() || '';
+                const scoreElements = match.querySelectorAll('.match-score .badge');
+                const homeScore = scoreElements[0]?.innerText?.trim() || '';
+                const awayScore = scoreElements[1]?.innerText?.trim() || '';
+                const statusText = match.querySelector('.status-name')?.innerText?.trim() || '';
+                return { homeTeam, awayTeam, homeScore, awayScore, statusText };
+            }).filter(item => item.homeTeam && item.awayTeam);
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function applyLiveScoresToGames(scores) {
+        if (!Array.isArray(scores) || !scores.length || !gamesToday.length) return;
+
+        gamesToday = gamesToday.map(game => {
+            const homeSlug = normalizeText(game.homeName).replace(/[^a-z0-9]/g, '');
+            const awaySlug = normalizeText(game.awayName).replace(/[^a-z0-9]/g, '');
+
+            const match = scores.find(item => {
+                const sHome = normalizeText(item.homeTeam).replace(/[^a-z0-9]/g, '');
+                const sAway = normalizeText(item.awayTeam).replace(/[^a-z0-9]/g, '');
+                return (sHome.includes(homeSlug) || homeSlug.includes(sHome)) && (sAway.includes(awaySlug) || awaySlug.includes(sAway));
+            });
+
+            if (!match) return game;
+
+            const statusLow = normalizeText(match.statusText);
+            let status = game.status;
+            if (statusLow.includes('fin') || statusLow.includes('enc') || statusLow.includes('fim')) status = 'ENCERRADO';
+            else if (statusLow.includes('vivo') || statusLow.includes("'") || statusLow.includes('1t') || statusLow.includes('2t') || statusLow.includes('int')) status = 'AO VIVO';
+
+            return {
+                ...game,
+                status,
+                statusText: match.statusText,
+                homeScore: match.homeScore,
+                awayScore: match.awayScore,
+            };
+        });
+    }
+
     function renderCategories() {
-        categoryRow.innerHTML = '';
-        const items = ['ALL', ...categories];
+        categoryList.innerHTML = '';
         categoryBtnEls = [];
 
-        const selectedPos = Math.max(0, items.indexOf(selectedCategory));
+        const selectedPos = Math.max(0, categories.indexOf(selectedCategory));
         categoryNavIndex = selectedPos;
 
-        items.forEach((cat, idx) => {
+        categories.forEach((cat, idx) => {
             const btn = document.createElement('button');
             btn.className = 'cat-btn' + (selectedCategory === cat ? ' active' : '');
-            btn.textContent = cat === 'ALL' ? 'TODOS' : cat;
+            btn.textContent = cat;
             btn.addEventListener('click', () => {
                 selectedCategory = cat;
                 categoryNavIndex = idx;
                 selectedIndex = 0;
                 applyCategoryFilter();
             });
+            const li = document.createElement('li');
+            li.appendChild(btn);
             categoryBtnEls.push(btn);
-            categoryRow.appendChild(btn);
+            categoryList.appendChild(li);
         });
 
         updateCategoryNavFocus();
@@ -742,10 +894,9 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     }
 
     function applyCategoryByIndex(index) {
-        const items = ['ALL', ...categories];
-        const safeIndex = ((index % items.length) + items.length) % items.length;
+        const safeIndex = ((index % categories.length) + categories.length) % categories.length;
         categoryNavIndex = safeIndex;
-        selectedCategory = items[safeIndex];
+        selectedCategory = categories[safeIndex];
         selectedIndex = 0;
         applyCategoryFilter();
     }
@@ -835,12 +986,12 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             li.innerHTML = `
                 <div class="game-top">
                     <span class="game-time">${game.hourLabel}</span>
-                    <span class="game-status">${game.status}</span>
+                    <span class="game-status">${game.statusText || game.status}</span>
                 </div>
                 <div class="game-league">${game.league}</div>
                 <div class="game-teams">
-                    <div class="game-team"><img src="${homeLogo}" alt="${game.homeName}"><span>${game.homeName}</span></div>
-                    <div class="game-team"><img src="${awayLogo}" alt="${game.awayName}"><span>${game.awayName}</span></div>
+                    <div class="game-team"><img src="${homeLogo}" alt="${game.homeName}"><span class="team-name">${game.homeName}</span><span class="team-score">${game.homeScore || ''}</span></div>
+                    <div class="game-team"><img src="${awayLogo}" alt="${game.awayName}"><span class="team-name">${game.awayName}</span><span class="team-score">${game.awayScore || ''}</span></div>
                 </div>
             `;
 
@@ -872,18 +1023,13 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     }
 
     function applyCategoryFilter() {
-        if (selectedCategory === 'ALL') {
-            filteredChannels = [...channels];
-        } else {
-            filteredChannels = channels.filter(c => c.category === selectedCategory);
-        }
+        filteredChannels = channels.filter(c => channelMatchesFixedCategory(c, selectedCategory));
 
         if (selectedIndex >= filteredChannels.length) {
             selectedIndex = Math.max(filteredChannels.length - 1, 0);
         }
 
-        const items = ['ALL', ...categories];
-        const idx = items.indexOf(selectedCategory);
+        const idx = categories.indexOf(selectedCategory);
         if (idx >= 0) categoryNavIndex = idx;
 
         renderCategories();
@@ -962,6 +1108,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     }
 
     function closeMenu(selectedChannel) {
+        closeCategoryPanel(false);
         menuOpen = false;
         menuPanel.classList.remove('open');
         menuPanel.setAttribute('aria-hidden', 'true');
@@ -969,6 +1116,27 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         if (selectedChannel) {
             showTopHudTemporarily();
         }
+    }
+
+    function openCategoryPanel() {
+        if (!menuOpen) return;
+        categoryOpen = true;
+        categoryPanel.classList.add('open');
+        categoryPanel.setAttribute('aria-hidden', 'false');
+        menuPanel.classList.add('with-category');
+        updateCategoryNavFocus();
+    }
+
+    function closeCategoryPanel(applyCurrent) {
+        if (!categoryOpen) return;
+        categoryOpen = false;
+        categoryPanel.classList.remove('open');
+        categoryPanel.setAttribute('aria-hidden', 'true');
+        menuPanel.classList.remove('with-category');
+        if (applyCurrent) {
+            applyCategoryByIndex(categoryNavIndex);
+        }
+        updateCategoryNavFocus();
     }
 
     function openGamesPanel() {
@@ -990,9 +1158,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     }
 
     function setCategoryByStep(step) {
-        const items = ['ALL', ...categories];
-        if (!items.length) return;
-        const next = (categoryNavIndex + step + items.length) % items.length;
+        if (!categories.length) return;
+        const next = (categoryNavIndex + step + categories.length) % categories.length;
         applyCategoryByIndex(next);
     }
 
@@ -1015,6 +1182,24 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             return;
         }
 
+        if (isBack) {
+            event.stopPropagation();
+            if (gamesOpen) {
+                closeGamesPanel(false);
+                return;
+            }
+            if (categoryOpen) {
+                closeCategoryPanel(false);
+                return;
+            }
+            if (menuOpen) {
+                closeMenu(false);
+                return;
+            }
+            showToast('Pressione ArrowLeft para abrir canais');
+            return;
+        }
+
         if (isEnter && !event.repeat) {
             const now = Date.now();
             if (now - lastOkAt <= 350) {
@@ -1032,6 +1217,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 openMenu();
             } else if (!menuOpen) {
                 openMenu();
+            } else if (!categoryOpen) {
+                openCategoryPanel();
             } else {
                 setCategoryByStep(-1);
                 updateCategoryNavFocus();
@@ -1040,6 +1227,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         if (key === 'ArrowRight') {
+            if (categoryOpen) {
+                closeCategoryPanel(true);
+                return;
+            }
             if (menuOpen) {
                 closeMenu(false);
             }
@@ -1055,7 +1246,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         if (key === 'ArrowUp') {
-            if (menuOpen) {
+            if (categoryOpen) {
+                setCategoryByStep(-1);
+                updateCategoryNavFocus();
+            } else if (menuOpen) {
                 selectedIndex = Math.max(0, selectedIndex - 1);
                 updateActiveChannelItem();
             } else if (gamesOpen) {
@@ -1066,7 +1260,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         if (key === 'ArrowDown') {
-            if (menuOpen) {
+            if (categoryOpen) {
+                setCategoryByStep(1);
+                updateCategoryNavFocus();
+            } else if (menuOpen) {
                 selectedIndex = Math.min(filteredChannels.length - 1, selectedIndex + 1);
                 updateActiveChannelItem();
             } else if (gamesOpen) {
@@ -1077,24 +1274,15 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         if (isEnter) {
-            if (menuOpen) {
+            if (categoryOpen) {
+                closeCategoryPanel(true);
+            } else if (menuOpen) {
                 playSelectedChannel();
                 closeMenu(true);
             } else if (gamesOpen) {
                 playSelectedGame();
             }
             return;
-        }
-
-        if (isBack) {
-            if (menuOpen) {
-                closeMenu(false);
-                return;
-            }
-            if (gamesOpen) {
-                closeGamesPanel(false);
-                return;
-            }
         }
     }
 
@@ -1103,6 +1291,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             const response = await fetch(`proxy_embedtv.php?resource=jogos&_t=${Date.now()}`, { cache: 'no-store' });
             const payload = await response.json();
             gamesToday = mapGames(payload);
+            const liveScores = await fetchLiveScores();
+            applyLiveScoresToGames(liveScores);
             if (selectedGameIndex >= gamesToday.length) {
                 selectedGameIndex = Math.max(0, gamesToday.length - 1);
             }
@@ -1120,7 +1310,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
         gamesRefreshTimer = setInterval(() => {
             fetchGamesToday();
-        }, 45000);
+        }, 20000);
     }
 
     async function loadChannelsExperience() {
@@ -1129,9 +1319,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             const payload = await response.json();
 
             channels = mapChannels(payload);
-            categories = [...new Set(channels.map(c => c.category))]
-                .filter(Boolean)
-                .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            categories = [...FIXED_CATEGORIES];
+            if (!categories.includes(selectedCategory)) {
+                selectedCategory = categories[0] || 'TELECINE';
+            }
 
             applyCategoryFilter();
 
@@ -1231,7 +1422,37 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         await startPairingFlow();
     }
 
-    document.addEventListener('keydown', handleRemoteNavigation);
+    function lockBackNavigation() {
+        try {
+            history.replaceState({ eliteplaySmartTv: true }, '', location.href);
+            history.pushState({ eliteplaySmartTvGuard: true }, '', location.href);
+        } catch (e) {
+            // ignora em ambientes sem history API completa
+        }
+    }
+
+    function handlePopStateNavigation() {
+        if (gamesOpen) {
+            closeGamesPanel(false);
+            lockBackNavigation();
+            return;
+        }
+        if (categoryOpen) {
+            closeCategoryPanel(false);
+            lockBackNavigation();
+            return;
+        }
+        if (menuOpen) {
+            closeMenu(false);
+            lockBackNavigation();
+            return;
+        }
+        lockBackNavigation();
+    }
+
+    document.addEventListener('keydown', handleRemoteNavigation, true);
+    window.addEventListener('popstate', handlePopStateNavigation);
+    lockBackNavigation();
     if (retryPairBtn) {
         retryPairBtn.addEventListener('click', () => {
             startPairingFlow();
