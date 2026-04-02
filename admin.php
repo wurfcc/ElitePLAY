@@ -682,6 +682,162 @@ $csrfToken = csrf_token();
         .form-input-inline:focus { border-color: var(--primary); }
         .form-input-inline::placeholder { color: rgba(148,163,184,0.4); }
 
+        .banner-editor-grid {
+            padding: 18px 22px 22px;
+            display: grid;
+            gap: 16px;
+        }
+
+        .banner-slot-card {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
+            background: rgba(255,255,255,0.02);
+            display: grid;
+            gap: 12px;
+        }
+
+        .banner-slot-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .banner-slot-left {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .banner-drag-handle {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            cursor: grab;
+            background: rgba(255,255,255,0.03);
+        }
+
+        .banner-slot-card.dragging {
+            opacity: 0.55;
+            transform: scale(0.995);
+        }
+
+        .banner-slot-card.drag-over {
+            border-color: rgba(59,130,246,0.55);
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.25) inset;
+        }
+
+        .banner-slot-head strong {
+            font-size: 15px;
+        }
+
+        .banner-slot-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .banner-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .banner-preview-box {
+            border: 1px dashed rgba(148,163,184,0.45);
+            border-radius: 10px;
+            background: rgba(15,23,42,0.45);
+            overflow: hidden;
+        }
+
+        .banner-preview-label {
+            display: block;
+            padding: 8px 10px;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #93c5fd;
+            border-bottom: 1px solid rgba(148,163,184,0.2);
+        }
+
+        .banner-preview-box img {
+            width: 100%;
+            aspect-ratio: 16 / 4;
+            object-fit: cover;
+            display: block;
+            background: rgba(15,23,42,0.35);
+        }
+
+        .banner-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            aspect-ratio: 16 / 4;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .banner-input-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .banner-field label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.6px;
+        }
+
+        .banner-link-field input,
+        .banner-field input[type='file'] {
+            width: 100%;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            padding: 10px 12px;
+            font-size: 13px;
+        }
+
+        .banner-field input[type='file']::file-selector-button {
+            border: none;
+            border-radius: 8px;
+            padding: 6px 10px;
+            margin-right: 10px;
+            background: rgba(59,130,246,0.2);
+            color: #bfdbfe;
+            cursor: pointer;
+        }
+
+        .banner-remove-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .banner-remove-row label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .banner-save-row {
+            display: flex;
+            justify-content: flex-end;
+        }
+
         .empty-state {
             text-align: center;
             padding: 48px 20px;
@@ -866,6 +1022,20 @@ $csrfToken = csrf_token();
                 grid-template-columns: 1fr;
             }
 
+            .banner-editor-grid {
+                padding: 14px;
+            }
+
+            .banner-preview-grid,
+            .banner-input-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .banner-save-row .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
             .ovr-suggestions { max-height: 180px; }
             .ovr-suggestion-item { font-size: 14px; padding: 10px 12px; }
         }
@@ -891,6 +1061,10 @@ $csrfToken = csrf_token();
         <button class="nav-item" onclick="showSection('jogos', this)" id="nav-jogos">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
             Jogos do Dia
+        </button>
+        <button class="nav-item" onclick="showSection('carrossel', this)" id="nav-carrossel">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-4.5-4.5-4 4-2.5-2.5L3 19"/></svg>
+            Carrossel Home
         </button>
 
         <div class="nav-section-label">Administração</div>
@@ -970,6 +1144,26 @@ $csrfToken = csrf_token();
             </div>
             <div class="jogos-list" id="jogos-list">
                 <div class="empty-state"><p>Carregando jogos...</p></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="section-carrossel">
+        <div class="page-header">
+            <h1>Carrossel da Home</h1>
+            <p>Gerencie 3 banners com imagem desktop, mobile e link de destino</p>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <h2>Banners acima dos jogos ao vivo</h2>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <span class="badge badge-slate">Desktop 16:2 • Mobile 16:4</span>
+                    <button class="btn btn-primary btn-sm" type="button" onclick="adicionarNovoBanner()">Adicionar Novo Banner</button>
+                </div>
+            </div>
+            <div class="banner-editor-grid" id="banner-editor-grid"></div>
+            <div class="banner-save-row" style="padding: 0 22px 22px;">
+                <button class="btn btn-primary" id="btn-salvar-carrossel" onclick="salvarCarrosselBanners()">Salvar Banners</button>
             </div>
         </div>
     </section>
@@ -1093,7 +1287,294 @@ $csrfToken = csrf_token();
 
         if (name === 'usuarios') { carregarUsuarios(); carregarStats(); }
         if (name === 'jogos')    carregarJogos();
+        if (name === 'carrossel') carregarCarrosselBanners();
         if (name === 'dashboard') carregarStats();
+    }
+
+    // ====================================================
+    // Carrossel Home
+    // ====================================================
+    let homeBannersCache = [];
+    let homeBannerCounter = 0;
+    let draggingBannerId = '';
+
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function createLocalBannerId() {
+        homeBannerCounter += 1;
+        return `bnr_${Date.now()}_${homeBannerCounter}`;
+    }
+
+    function normalizeBannerClient(item = {}) {
+        return {
+            id: String(item.id || createLocalBannerId()),
+            link: String(item.link || ''),
+            desktop_image: String(item.desktop_image || ''),
+            mobile_image: String(item.mobile_image || ''),
+            remove_desktop: false,
+            remove_mobile: false,
+            remove_banner: false,
+        };
+    }
+
+    function getLiveBannerImage(banner, variant) {
+        if (variant === 'desktop' && banner.remove_desktop) return '';
+        if (variant === 'mobile' && banner.remove_mobile) return '';
+        return variant === 'desktop' ? String(banner.desktop_image || '') : String(banner.mobile_image || '');
+    }
+
+    function bannerPreviewMarkup(label, imagePath, previewId, ratioText) {
+        if (imagePath) {
+            const safePath = escapeHtml(imagePath);
+            const bust = `${safePath}${safePath.includes('?') ? '&' : '?'}v=${Date.now()}`;
+            return `<div class="banner-preview-box"><span class="banner-preview-label">${label} (${ratioText})</span><img id="${previewId}" src="${bust}" alt="${label}"></div>`;
+        }
+        return `<div class="banner-preview-box"><span class="banner-preview-label">${label} (${ratioText})</span><div class="banner-empty" id="${previewId}">Sem imagem</div></div>`;
+    }
+
+    function renderBannerEditor() {
+        const grid = document.getElementById('banner-editor-grid');
+
+        if (!homeBannersCache.length) {
+            grid.innerHTML = '<div class="empty-state"><p>Nenhum banner cadastrado. Clique em "Adicionar Novo Banner".</p></div>';
+            return;
+        }
+
+        grid.innerHTML = homeBannersCache.map((item, index) => {
+            const link = escapeHtml(item.link || '');
+            const desktop = getLiveBannerImage(item, 'desktop');
+            const mobile = getLiveBannerImage(item, 'mobile');
+            const bannerId = escapeHtml(item.id);
+
+            return `
+                <div class="banner-slot-card" data-banner-id="${bannerId}">
+                    <div class="banner-slot-head">
+                        <div class="banner-slot-left">
+                            <span class="banner-drag-handle" title="Arrastar para reordenar">⋮⋮</span>
+                            <strong class="banner-slot-title">Banner ${index + 1}</strong>
+                        </div>
+                        <button class="btn btn-danger btn-sm" type="button" onclick="excluirBanner('${bannerId}')">Excluir banner</button>
+                    </div>
+                    <div class="banner-preview-grid">
+                        ${bannerPreviewMarkup('Desktop', desktop, `banner-preview-desktop-${bannerId}`, '16:2')}
+                        ${bannerPreviewMarkup('Mobile', mobile, `banner-preview-mobile-${bannerId}`, '16:4')}
+                    </div>
+                    <div class="banner-link-field">
+                        <label for="banner-link-${bannerId}">Link de destino</label>
+                        <input type="url" id="banner-link-${bannerId}" placeholder="https://seusite.com/oferta" value="${link}" oninput="atualizarLinkBanner('${bannerId}', this.value)">
+                    </div>
+                    <div class="banner-input-grid">
+                        <div class="banner-field">
+                            <label for="banner-desktop-${bannerId}">Imagem desktop</label>
+                            <input type="file" id="banner-desktop-${bannerId}" accept="image/png,image/jpeg,image/webp" onchange="previewBannerFile(this, '${bannerId}', 'desktop')">
+                            <button class="btn btn-ghost btn-sm" type="button" style="margin-top:8px;" onclick="removerImagemBanner('${bannerId}', 'desktop')">Excluir imagem desktop</button>
+                        </div>
+                        <div class="banner-field">
+                            <label for="banner-mobile-${bannerId}">Imagem mobile</label>
+                            <input type="file" id="banner-mobile-${bannerId}" accept="image/png,image/jpeg,image/webp" onchange="previewBannerFile(this, '${bannerId}', 'mobile')">
+                            <button class="btn btn-ghost btn-sm" type="button" style="margin-top:8px;" onclick="removerImagemBanner('${bannerId}', 'mobile')">Excluir imagem mobile</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        setupBannerDragAndDrop();
+    }
+
+    function moveBannerInCache(dragId, targetId) {
+        if (!dragId || !targetId || dragId === targetId) return;
+        const fromIndex = homeBannersCache.findIndex(item => item.id === dragId);
+        const toIndex = homeBannersCache.findIndex(item => item.id === targetId);
+        if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+
+        const [moved] = homeBannersCache.splice(fromIndex, 1);
+        homeBannersCache.splice(toIndex, 0, moved);
+    }
+
+    function refreshBannerCardTitles() {
+        const cards = document.querySelectorAll('#banner-editor-grid .banner-slot-card');
+        cards.forEach((card, idx) => {
+            const title = card.querySelector('.banner-slot-title');
+            if (title) title.textContent = `Banner ${idx + 1}`;
+        });
+    }
+
+    function setupBannerDragAndDrop() {
+        const grid = document.getElementById('banner-editor-grid');
+        const cards = Array.from(grid.querySelectorAll('.banner-slot-card'));
+
+        cards.forEach(card => {
+            card.setAttribute('draggable', 'true');
+
+            card.addEventListener('dragstart', (e) => {
+                draggingBannerId = card.dataset.bannerId || '';
+                card.classList.add('dragging');
+                if (e.dataTransfer) {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', draggingBannerId);
+                }
+            });
+
+            card.addEventListener('dragend', () => {
+                draggingBannerId = '';
+                cards.forEach(c => c.classList.remove('dragging', 'drag-over'));
+            });
+
+            card.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (!draggingBannerId) return;
+                if ((card.dataset.bannerId || '') === draggingBannerId) return;
+                cards.forEach(c => c.classList.remove('drag-over'));
+                card.classList.add('drag-over');
+            });
+
+            card.addEventListener('dragleave', () => {
+                card.classList.remove('drag-over');
+            });
+
+            card.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const targetId = card.dataset.bannerId || '';
+                const dragId = draggingBannerId || (e.dataTransfer ? e.dataTransfer.getData('text/plain') : '');
+                if (!dragId || !targetId || dragId === targetId) {
+                    card.classList.remove('drag-over');
+                    return;
+                }
+
+                moveBannerInCache(dragId, targetId);
+
+                const dragCard = cards.find(c => (c.dataset.bannerId || '') === dragId);
+                const targetCard = cards.find(c => (c.dataset.bannerId || '') === targetId);
+                if (dragCard && targetCard && dragCard !== targetCard) {
+                    grid.insertBefore(dragCard, targetCard);
+                }
+
+                cards.forEach(c => c.classList.remove('drag-over'));
+                refreshBannerCardTitles();
+            });
+        });
+    }
+
+    function atualizarLinkBanner(bannerId, value) {
+        homeBannersCache = homeBannersCache.map(item => item.id === bannerId ? { ...item, link: String(value || '') } : item);
+    }
+
+    function adicionarNovoBanner() {
+        homeBannersCache.push(normalizeBannerClient({}));
+        renderBannerEditor();
+    }
+
+    function excluirBanner(bannerId) {
+        homeBannersCache = homeBannersCache.filter(item => item.id !== bannerId);
+        renderBannerEditor();
+    }
+
+    function removerImagemBanner(bannerId, variant) {
+        homeBannersCache = homeBannersCache.map(item => {
+            if (item.id !== bannerId) return item;
+            if (variant === 'desktop') {
+                return { ...item, remove_desktop: true };
+            }
+            return { ...item, remove_mobile: true };
+        });
+
+        const fileInput = document.getElementById(`banner-${variant}-${bannerId}`);
+        if (fileInput) fileInput.value = '';
+
+        const targetId = `banner-preview-${variant}-${bannerId}`;
+        const targetEl = document.getElementById(targetId);
+        if (targetEl) {
+            const empty = document.createElement('div');
+            empty.className = 'banner-empty';
+            empty.id = targetId;
+            empty.textContent = 'Sem imagem';
+            targetEl.replaceWith(empty);
+        }
+    }
+
+    function previewBannerFile(input, bannerId, variant) {
+        const file = input.files && input.files[0] ? input.files[0] : null;
+        if (!file) return;
+
+        const target = homeBannersCache.find(item => item.id === bannerId);
+        if (target) {
+            if (variant === 'desktop') {
+                target.remove_desktop = false;
+            } else {
+                target.remove_mobile = false;
+            }
+        }
+
+        const targetId = `banner-preview-${variant}-${bannerId}`;
+        const targetEl = document.getElementById(targetId);
+        if (!targetEl) return;
+
+        const objectUrl = URL.createObjectURL(file);
+        const img = document.createElement('img');
+        img.id = targetId;
+        img.src = objectUrl;
+        img.alt = `Preview ${variant} ${bannerId}`;
+        targetEl.replaceWith(img);
+    }
+
+    async function carregarCarrosselBanners() {
+        const grid = document.getElementById('banner-editor-grid');
+        grid.innerHTML = '<div class="empty-state"><p>Carregando banners...</p></div>';
+
+        const banners = await fetch(`admin_api.php?action=get_home_banners&_t=${Date.now()}`, { cache: 'no-store' })
+            .then(r => r.json())
+            .catch(() => []);
+
+        homeBannersCache = Array.isArray(banners) ? banners.map(normalizeBannerClient) : [];
+        renderBannerEditor();
+    }
+
+    async function salvarCarrosselBanners() {
+        const btn = document.getElementById('btn-salvar-carrossel');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-sm"></span>';
+
+        const fd = new FormData();
+        const payload = homeBannersCache.map(item => ({
+            id: item.id,
+            link: String(item.link || ''),
+            remove_banner: !!item.remove_banner,
+            remove_desktop: !!item.remove_desktop,
+            remove_mobile: !!item.remove_mobile,
+        }));
+        fd.append('banners_payload', JSON.stringify(payload));
+
+        homeBannersCache.forEach(item => {
+            const desktopFile = document.getElementById(`banner-desktop-${item.id}`)?.files?.[0] || null;
+            const mobileFile = document.getElementById(`banner-mobile-${item.id}`)?.files?.[0] || null;
+            if (desktopFile) fd.append(`desktop_image_${item.id}`, desktopFile);
+            if (mobileFile) fd.append(`mobile_image_${item.id}`, mobileFile);
+        });
+
+        const res = await fetch('admin_api.php?action=save_home_banners', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
+            body: fd
+        }).then(r => r.json()).catch(() => null);
+
+        btn.disabled = false;
+        btn.textContent = 'Salvar Banners';
+
+        if (res?.ok) {
+            homeBannersCache = Array.isArray(res.banners) ? res.banners.map(normalizeBannerClient) : [];
+            renderBannerEditor();
+            alert('Banners atualizados com sucesso.');
+        } else {
+            alert(res?.error || 'Erro ao salvar banners.');
+        }
     }
 
     // ====================================================

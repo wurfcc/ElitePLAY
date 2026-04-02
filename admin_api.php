@@ -4,6 +4,7 @@
 //  Actions: list_users | toggle_user | list_games | save_override | get_overrides
 // ============================================================
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/home_banners_storage.php';
 
 configurar_sessao();
 
@@ -33,7 +34,7 @@ if (!$me || !$me['is_admin']) {
 $action = $_GET['action'] ?? '';
 
 // --- Verificação CSRF para ações POST ---
-$csrf_safe_actions = ['get_overrides', 'online_count', 'list_users', 'active_sessions'];
+$csrf_safe_actions = ['get_overrides', 'online_count', 'list_users', 'active_sessions', 'get_home_banners'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !in_array($action, $csrf_safe_actions, true)) {
     $token_recebido = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? '';
     if (!validar_csrf($token_recebido)) {
@@ -294,6 +295,122 @@ switch ($action) {
     case 'active_sessions':
         $stmt = db()->query('SELECT COUNT(*) FROM sessoes WHERE revogada = 0 AND expires_at > NOW()');
         echo json_encode(['count' => (int)$stmt->fetchColumn()]);
+        break;
+
+    // ---- Banners da home (carrossel) ----
+    case 'get_home_banners':
+        echo json_encode(load_home_banners(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        break;
+
+    case 'save_home_banners':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['error' => 'Método inválido.']);
+            exit;
+        }
+
+        $payloadRaw = (string)($_POST['banners_payload'] ?? '');
+        $payload = json_decode($payloadRaw, true);
+        if (!is_array($payload)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Payload de banners inválido.']);
+            break;
+        }
+
+        $currentBanners = load_home_banners();
+        $currentById = [];
+        foreach ($currentBanners as $existing) {
+            $existingId = home_sanitize_banner_id((string)($existing['id'] ?? ''));
+            if ($existingId !== '') {
+                $currentById[$existingId] = $existing;
+            }
+        }
+
+        $nextBanners = [];
+        $seen = [];
+
+        try {
+            foreach ($payload as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $bannerId = home_sanitize_banner_id((string)($item['id'] ?? ''));
+                if ($bannerId === '' || isset($seen[$bannerId])) {
+                    continue;
+                }
+                $seen[$bannerId] = true;
+
+                $removeBanner = !empty($item['remove_banner']);
+                $source = $currentById[$bannerId] ?? [
+                    'id' => $bannerId,
+                    'link' => '',
+                    'desktop_image' => '',
+                    'mobile_image' => '',
+                ];
+
+                if ($removeBanner) {
+                    delete_home_banner_asset((string)($source['desktop_image'] ?? ''));
+                    delete_home_banner_asset((string)($source['mobile_image'] ?? ''));
+                    continue;
+                }
+
+                $current = [
+                    'id' => $bannerId,
+                    'link' => normalize_home_banner_link((string)($item['link'] ?? '')),
+                    'desktop_image' => (string)($source['desktop_image'] ?? ''),
+                    'mobile_image' => (string)($source['mobile_image'] ?? ''),
+                ];
+
+                if (!empty($item['remove_desktop'])) {
+                    delete_home_banner_asset((string)($current['desktop_image'] ?? ''));
+                    $current['desktop_image'] = '';
+                }
+
+                if (!empty($item['remove_mobile'])) {
+                    delete_home_banner_asset((string)($current['mobile_image'] ?? ''));
+                    $current['mobile_image'] = '';
+                }
+
+                $desktopFileKey = 'desktop_image_' . $bannerId;
+                if (isset($_FILES[$desktopFileKey]) && (int)($_FILES[$desktopFileKey]['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                    $oldDesktop = (string)($current['desktop_image'] ?? '');
+                    $current['desktop_image'] = store_home_banner_upload($_FILES[$desktopFileKey], $bannerId, 'desktop');
+                    delete_home_banner_asset($oldDesktop);
+                }
+
+                $mobileFileKey = 'mobile_image_' . $bannerId;
+                if (isset($_FILES[$mobileFileKey]) && (int)($_FILES[$mobileFileKey]['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                    $oldMobile = (string)($current['mobile_image'] ?? '');
+                    $current['mobile_image'] = store_home_banner_upload($_FILES[$mobileFileKey], $bannerId, 'mobile');
+                    delete_home_banner_asset($oldMobile);
+                }
+
+                $nextBanners[] = $current;
+            }
+
+            foreach ($currentById as $existingId => $existingItem) {
+                if (!isset($seen[$existingId])) {
+                    delete_home_banner_asset((string)($existingItem['desktop_image'] ?? ''));
+                    delete_home_banner_asset((string)($existingItem['mobile_image'] ?? ''));
+                }
+            }
+        } catch (RuntimeException $e) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+            break;
+        }
+
+        if (!save_home_banners($nextBanners)) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Não foi possível salvar os banners.']);
+            break;
+        }
+
+        echo json_encode([
+            'ok' => true,
+            'banners' => load_home_banners(),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         break;
 
     default:

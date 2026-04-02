@@ -1,4 +1,5 @@
 <?php require_once __DIR__ . '/middleware.php';
+require_once __DIR__ . '/home_banners_storage.php';
 $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 1;
 $viewerProfile = [
     'email' => $usuario_logado['email'] ?? '',
@@ -6,6 +7,7 @@ $viewerProfile = [
     'dias_acesso' => isset($usuario_logado['dias_acesso']) ? ($usuario_logado['dias_acesso'] === null ? null : (int)$usuario_logado['dias_acesso']) : null,
     'acesso_expira_em' => $usuario_logado['acesso_expira_em'] ?? null,
 ];
+$homeBanners = load_home_banners();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -412,6 +414,73 @@ $viewerProfile = [
             margin-top: 15px;
         }
 
+        .home-banner-carousel {
+            margin: 16px var(--pad-x) 10px;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .home-banner-track {
+            display: flex;
+            transition: transform 0.45s ease;
+            width: 100%;
+        }
+
+        .home-banner-slide {
+            min-width: 100%;
+            display: block;
+            color: inherit;
+            text-decoration: none;
+            aspect-ratio: 16 / 2;
+            background: #0c1220;
+        }
+
+        .home-banner-slide picture,
+        .home-banner-slide img {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .home-banner-slide img {
+            object-fit: cover;
+        }
+
+        .home-banner-dots {
+            position: absolute;
+            left: 50%;
+            bottom: 10px;
+            transform: translateX(-50%);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            border-radius: 999px;
+            background: rgba(8, 11, 18, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+
+        .home-banner-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            border: none;
+            padding: 0;
+            background: rgba(148, 163, 184, 0.8);
+            cursor: pointer;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+
+        .home-banner-dot.active {
+            background: #ffffff;
+            transform: scale(1.2);
+        }
+
         .sidebar-toggle {
             display: none;
             background: transparent;
@@ -507,6 +576,18 @@ $viewerProfile = [
                 width: 32px;
                 height: 32px;
                 font-size: 14px;
+            }
+
+            .home-banner-carousel {
+                margin: 12px var(--pad-x) 8px;
+            }
+
+            .home-banner-slide {
+                aspect-ratio: 16 / 4;
+            }
+
+            .home-banner-dots {
+                bottom: 8px;
             }
         }
 
@@ -1252,6 +1333,56 @@ $viewerProfile = [
 
     <!-- Conteúdo Principal -->
     <div class="main-content">
+        <?php
+        $homeBannerSlides = [];
+        foreach ($homeBanners as $slide) {
+            $desktopImage = trim((string)($slide['desktop_image'] ?? ''));
+            $mobileImage = trim((string)($slide['mobile_image'] ?? ''));
+            if ($desktopImage === '' && $mobileImage !== '') {
+                $desktopImage = $mobileImage;
+            }
+            if ($mobileImage === '' && $desktopImage !== '') {
+                $mobileImage = $desktopImage;
+            }
+
+            if ($desktopImage === '' && $mobileImage === '') {
+                $desktopImage = 'imagens/elitelogo.webp';
+                $mobileImage = 'imagens/elitelogo.webp';
+            }
+
+            $homeBannerSlides[] = [
+                'link' => trim((string)($slide['link'] ?? '')),
+                'desktop_image' => $desktopImage,
+                'mobile_image' => $mobileImage,
+            ];
+        }
+        ?>
+        <?php if (!empty($homeBannerSlides)): ?>
+        <div class="home-banner-carousel" id="home-banner-carousel">
+            <div class="home-banner-track" id="home-banner-track">
+                <?php foreach ($homeBannerSlides as $slide): ?>
+                <?php
+                $slideLink = trim((string)($slide['link'] ?? ''));
+                $desktopImage = (string)($slide['desktop_image'] ?? 'imagens/elitelogo.webp');
+                $mobileImage = (string)($slide['mobile_image'] ?? 'imagens/elitelogo.webp');
+                $openNewTab = preg_match('/^https?:\/\//i', $slideLink) === 1;
+                ?>
+                <a class="home-banner-slide" href="<?php echo $slideLink !== '' ? htmlspecialchars($slideLink, ENT_QUOTES, 'UTF-8') : '#'; ?>"<?php echo $slideLink !== '' ? ($openNewTab ? ' target="_blank" rel="noopener noreferrer"' : '') : ' onclick="return false;"'; ?>>
+                    <picture>
+                        <source media="(max-width: 768px)" srcset="<?php echo htmlspecialchars($mobileImage, ENT_QUOTES, 'UTF-8'); ?>">
+                        <img src="<?php echo htmlspecialchars($desktopImage, ENT_QUOTES, 'UTF-8'); ?>" alt="Banner ElitePLAY" loading="lazy">
+                    </picture>
+                </a>
+                <?php endforeach; ?>
+            </div>
+            <div class="home-banner-dots" id="home-banner-dots">
+                <?php foreach ($homeBannerSlides as $index => $_slide): ?>
+                <button type="button" class="home-banner-dot<?php echo $index === 0 ? ' active' : ''; ?>" data-banner-index="<?php echo $index; ?>" aria-label="Ir para banner <?php echo $index + 1; ?>"></button>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <div class="jogos-section" id="jogos-section" style="display: none;">
             <div id="jogos-horizontal-wrapper"></div>
         </div>
@@ -2879,6 +3010,50 @@ $viewerProfile = [
             form.submit();
         }
 
+        function initHomeBannerCarousel() {
+            const carousel = document.getElementById('home-banner-carousel');
+            const track = document.getElementById('home-banner-track');
+            const dotsWrap = document.getElementById('home-banner-dots');
+            if (!carousel || !track || !dotsWrap) return;
+
+            const slides = track.querySelectorAll('.home-banner-slide');
+            const dots = dotsWrap.querySelectorAll('.home-banner-dot');
+            if (!slides.length) return;
+
+            let currentIndex = 0;
+            let autoTimer = null;
+
+            const goToSlide = (idx) => {
+                currentIndex = (idx + slides.length) % slides.length;
+                track.style.transform = `translateX(-${currentIndex * 100}%)`;
+                dots.forEach((dot, dotIdx) => {
+                    dot.classList.toggle('active', dotIdx === currentIndex);
+                });
+            };
+
+            const startAuto = () => {
+                if (slides.length <= 1) return;
+                if (autoTimer) clearInterval(autoTimer);
+                autoTimer = setInterval(() => goToSlide(currentIndex + 1), 5000);
+            };
+
+            dots.forEach((dot) => {
+                dot.addEventListener('click', () => {
+                    const idx = Number(dot.dataset.bannerIndex || 0);
+                    goToSlide(idx);
+                    startAuto();
+                });
+            });
+
+            carousel.addEventListener('mouseenter', () => {
+                if (autoTimer) clearInterval(autoTimer);
+            });
+            carousel.addEventListener('mouseleave', startAuto);
+
+            goToSlide(0);
+            startAuto();
+        }
+
         window.onload = () => {
             if (isBackFromAssistir()) {
                 // Restaura posição do scroll
@@ -2892,6 +3067,7 @@ $viewerProfile = [
                 }
             });
             updateChannelsSourceToggleUI();
+            initHomeBannerCarousel();
             fetchChannels();
         };
     </script>
