@@ -1,4 +1,7 @@
-<?php require_once __DIR__ . '/middleware.php'; ?>
+<?php
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -229,6 +232,73 @@
             background: rgba(30, 41, 59, 0.7);
         }
 
+        .auth-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 45;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(2, 6, 23, 0.78);
+            backdrop-filter: blur(3px);
+        }
+
+        .auth-overlay.show {
+            display: flex;
+        }
+
+        .auth-card {
+            width: min(760px, 90vw);
+            border: 1px solid rgba(56, 189, 248, 0.42);
+            border-radius: 18px;
+            background: linear-gradient(145deg, rgba(7, 19, 44, 0.97), rgba(3, 11, 28, 0.94));
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            padding: 26px;
+            text-align: center;
+            display: grid;
+            gap: 14px;
+        }
+
+        .auth-card h2 {
+            margin: 0;
+            font-size: 30px;
+            letter-spacing: 0.4px;
+        }
+
+        .auth-card p {
+            margin: 0;
+            color: #dbeafe;
+            font-size: 17px;
+            line-height: 1.45;
+        }
+
+        .auth-card .pair-status {
+            color: #93c5fd;
+            font-size: 14px;
+        }
+
+        .auth-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .auth-btn {
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            background: rgba(56, 189, 248, 0.16);
+            color: #e0f2fe;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .auth-btn:hover {
+            background: rgba(56, 189, 248, 0.28);
+        }
+
         .toast {
             position: absolute;
             left: 50%;
@@ -279,11 +349,24 @@
         </div>
     </aside>
 
+    <div class="auth-overlay" id="auth-overlay">
+        <div class="auth-card">
+            <h2>Autorizar aplicativo pelo celular</h2>
+            <p>Faça login no seu celular e clique no icone de cadeado no topo do header.</p>
+            <p class="pair-status" id="pair-status">Aguardando autorização...</p>
+            <div class="auth-actions">
+                <button class="auth-btn" type="button" id="retry-pair-btn">Tentar novamente</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 </div>
 
 <script>
     const CHANNELS_URL = 'proxy_embedtv.php?resource=channels';
+    const SMARTTV_PAIR_API = 'smarttv_pair_api.php';
+    const SMARTTV_TOKEN_KEY = 'eliteplay_smarttv_token';
     const menuPanel = document.getElementById('menu-panel');
     const categoryRow = document.getElementById('category-row');
     const channelList = document.getElementById('channel-list');
@@ -291,6 +374,9 @@
     const hudMeta = document.getElementById('hud-channel-meta');
     const video = document.getElementById('tv-player');
     const toast = document.getElementById('toast');
+    const authOverlay = document.getElementById('auth-overlay');
+    const pairStatus = document.getElementById('pair-status');
+    const retryPairBtn = document.getElementById('retry-pair-btn');
 
     let hls = null;
     let channels = [];
@@ -300,6 +386,30 @@
     let selectedIndex = 0;
     let menuOpen = false;
     let lastOkAt = 0;
+    let smartTvAuthorized = false;
+    let pairId = '';
+    let pairPollTimer = null;
+
+    function setPairStatus(message) {
+        if (pairStatus) {
+            pairStatus.textContent = message;
+        }
+    }
+
+    function showAuthOverlay() {
+        authOverlay.classList.add('show');
+    }
+
+    function hideAuthOverlay() {
+        authOverlay.classList.remove('show');
+    }
+
+    function stopPairPolling() {
+        if (pairPollTimer) {
+            clearInterval(pairPollTimer);
+            pairPollTimer = null;
+        }
+    }
 
     function requestFullscreenMode() {
         const root = document.documentElement;
@@ -553,6 +663,13 @@
             event.preventDefault();
         }
 
+        if (!smartTvAuthorized) {
+            if (isEnter || key === 'ArrowLeft') {
+                showToast('Autorize pelo celular para liberar o player');
+            }
+            return;
+        }
+
         if (isEnter && !event.repeat) {
             const now = Date.now();
             if (now - lastOkAt <= 350) {
@@ -611,7 +728,7 @@
         }
     }
 
-    async function bootstrap() {
+    async function loadChannelsExperience() {
         try {
             const response = await fetch(`${CHANNELS_URL}&_t=${Date.now()}`, { cache: 'no-store' });
             const payload = await response.json();
@@ -637,8 +754,94 @@
         }
     }
 
+    async function validateStoredSmartTvToken() {
+        const token = localStorage.getItem(SMARTTV_TOKEN_KEY) || '';
+        if (!token) {
+            return false;
+        }
+
+        const res = await fetch(`${SMARTTV_PAIR_API}?action=validate&auth_token=${encodeURIComponent(token)}&_t=${Date.now()}`, {
+            cache: 'no-store'
+        }).then(r => r.json()).catch(() => null);
+
+        if (res?.authorized) {
+            return true;
+        }
+
+        localStorage.removeItem(SMARTTV_TOKEN_KEY);
+        return false;
+    }
+
+    async function checkPairStatus() {
+        if (!pairId) return;
+
+        const res = await fetch(`${SMARTTV_PAIR_API}?action=status&pair_id=${encodeURIComponent(pairId)}&_t=${Date.now()}`, {
+            cache: 'no-store'
+        }).then(r => r.json()).catch(() => null);
+
+        if (!res) {
+            setPairStatus('Erro ao verificar autorização. Tentando novamente...');
+            return;
+        }
+
+        if (res.expired) {
+            stopPairPolling();
+            setPairStatus('A solicitação expirou. Clique em "Tentar novamente".');
+            return;
+        }
+
+        if (res.authorized && res.auth_token) {
+            stopPairPolling();
+            localStorage.setItem(SMARTTV_TOKEN_KEY, res.auth_token);
+            smartTvAuthorized = true;
+            hideAuthOverlay();
+            showToast('Smart TV autorizada!');
+            loadChannelsExperience();
+        }
+    }
+
+    async function startPairingFlow() {
+        stopPairPolling();
+        pairId = '';
+        showAuthOverlay();
+        setPairStatus('Aguardando autorização...');
+
+        const created = await fetch(`${SMARTTV_PAIR_API}?action=create`, {
+            method: 'POST',
+            cache: 'no-store'
+        }).then(r => r.json()).catch(() => null);
+
+        if (!created?.ok || !created?.pair_id) {
+            setPairStatus(created?.error || 'Falha ao iniciar autorização.');
+            return;
+        }
+
+        pairId = created.pair_id;
+        setPairStatus('Aguardando autorização pelo celular...');
+        pairPollTimer = setInterval(checkPairStatus, 2500);
+        checkPairStatus();
+    }
+
+    async function initSmartTvPage() {
+        const alreadyAuthorized = await validateStoredSmartTvToken();
+        if (alreadyAuthorized) {
+            smartTvAuthorized = true;
+            hideAuthOverlay();
+            loadChannelsExperience();
+            return;
+        }
+
+        smartTvAuthorized = false;
+        await startPairingFlow();
+    }
+
     document.addEventListener('keydown', handleRemoteNavigation);
-    bootstrap();
+    if (retryPairBtn) {
+        retryPairBtn.addEventListener('click', () => {
+            startPairingFlow();
+        });
+    }
+    initSmartTvPage();
 </script>
 </body>
 </html>
