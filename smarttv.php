@@ -8,6 +8,9 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ElitePLAY Smart TV</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
     <style>
         :root {
@@ -101,13 +104,14 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             bottom: 0;
             width: min(42vw, 540px);
             z-index: 30;
-            transform: translateX(-102%);
-            transition: transform 0.28s ease;
+            transform: translate3d(-102%, 0, 0);
+            transition: transform 0.16s ease-out;
             background: var(--panel-strong);
             border-right: 1px solid var(--line);
-            backdrop-filter: blur(8px);
             display: grid;
             grid-template-rows: auto auto 1fr auto;
+            will-change: transform;
+            contain: layout paint;
         }
 
         .games-panel {
@@ -117,18 +121,19 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             bottom: 0;
             width: min(42vw, 540px);
             z-index: 30;
-            transform: translateX(102%);
-            transition: transform 0.28s ease;
+            transform: translate3d(102%, 0, 0);
+            transition: transform 0.16s ease-out;
             background: var(--panel-strong);
             border-left: 1px solid var(--line);
-            backdrop-filter: blur(8px);
             display: grid;
             grid-template-rows: auto 1fr auto;
+            will-change: transform;
+            contain: layout paint;
         }
 
-        .games-panel.open { transform: translateX(0); }
+        .games-panel.open { transform: translate3d(0, 0, 0); }
 
-        .menu-panel.open { transform: translateX(0); }
+        .menu-panel.open { transform: translate3d(0, 0, 0); }
 
         .menu-head {
             padding: 18px 18px 12px;
@@ -173,6 +178,11 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             border-color: var(--focus);
             background: var(--focus-soft);
             color: #e0f2fe;
+        }
+
+        .cat-btn.nav-focus {
+            border-color: #22c55e;
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.22);
         }
 
         .channel-list {
@@ -489,6 +499,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     let selectedCategory = 'ALL';
     let selectedIndex = 0;
     let selectedGameIndex = 0;
+    let categoryNavIndex = 0;
     let menuOpen = false;
     let gamesOpen = false;
     let lastOkAt = 0;
@@ -496,6 +507,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     let pairId = '';
     let pairPollTimer = null;
     let hudHideTimer = null;
+    let gamesRefreshTimer = null;
+    let channelItemEls = [];
+    let gameItemEls = [];
+    let categoryBtnEls = [];
 
     function showTopHudTemporarily() {
         if (!topHud) return;
@@ -507,7 +522,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         topHud.classList.remove('hidden');
         hudHideTimer = setTimeout(() => {
-            if (!menuOpen) {
+            if (!menuOpen && !gamesOpen) {
                 topHud.classList.add('hidden');
             }
         }, 3000);
@@ -693,21 +708,61 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     function renderCategories() {
         categoryRow.innerHTML = '';
         const items = ['ALL', ...categories];
+        categoryBtnEls = [];
 
-        items.forEach(cat => {
+        const selectedPos = Math.max(0, items.indexOf(selectedCategory));
+        categoryNavIndex = selectedPos;
+
+        items.forEach((cat, idx) => {
             const btn = document.createElement('button');
             btn.className = 'cat-btn' + (selectedCategory === cat ? ' active' : '');
             btn.textContent = cat === 'ALL' ? 'TODOS' : cat;
             btn.addEventListener('click', () => {
                 selectedCategory = cat;
+                categoryNavIndex = idx;
                 selectedIndex = 0;
                 applyCategoryFilter();
             });
+            categoryBtnEls.push(btn);
             categoryRow.appendChild(btn);
         });
+
+        updateCategoryNavFocus();
+    }
+
+    function updateCategoryNavFocus() {
+        if (!categoryBtnEls.length) return;
+        categoryBtnEls.forEach((btn, idx) => {
+            btn.classList.toggle('nav-focus', idx === categoryNavIndex && menuOpen);
+        });
+        const activeBtn = categoryBtnEls[categoryNavIndex];
+        if (activeBtn) {
+            activeBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
+        }
+    }
+
+    function applyCategoryByIndex(index) {
+        const items = ['ALL', ...categories];
+        const safeIndex = ((index % items.length) + items.length) % items.length;
+        categoryNavIndex = safeIndex;
+        selectedCategory = items[safeIndex];
+        selectedIndex = 0;
+        applyCategoryFilter();
+    }
+
+    function updateActiveChannelItem() {
+        if (!channelItemEls.length) return;
+        channelItemEls.forEach((el, idx) => {
+            el.classList.toggle('active', idx === selectedIndex);
+        });
+        const active = channelItemEls[selectedIndex];
+        if (active) {
+            active.scrollIntoView({ block: 'nearest' });
+        }
     }
 
     function renderChannelList() {
+        channelItemEls = [];
         if (!filteredChannels.length) {
             channelList.innerHTML = '<li class="channel-item"><div></div><div><div class="name">Nenhum canal nessa categoria</div></div></li>';
             return;
@@ -737,21 +792,31 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
             li.addEventListener('click', () => {
                 selectedIndex = index;
-                renderChannelList();
+                updateActiveChannelItem();
                 playSelectedChannel();
                 closeMenu(true);
             });
 
             channelList.appendChild(li);
+            channelItemEls.push(li);
         });
 
-        const active = channelList.querySelector('.channel-item.active');
+        updateActiveChannelItem();
+    }
+
+    function updateActiveGameItem() {
+        if (!gameItemEls.length) return;
+        gameItemEls.forEach((el, idx) => {
+            el.classList.toggle('active', idx === selectedGameIndex);
+        });
+        const active = gameItemEls[selectedGameIndex];
         if (active) {
             active.scrollIntoView({ block: 'nearest' });
         }
     }
 
     function renderGamesList() {
+        gameItemEls = [];
         if (!gamesToday.length) {
             gamesList.innerHTML = '<li class="game-item"><div class="game-league">Nenhum jogo encontrado para hoje.</div></li>';
             return;
@@ -781,17 +846,15 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
             li.addEventListener('click', () => {
                 selectedGameIndex = index;
-                renderGamesList();
+                updateActiveGameItem();
                 playSelectedGame();
             });
 
             gamesList.appendChild(li);
+            gameItemEls.push(li);
         });
 
-        const active = gamesList.querySelector('.game-item.active');
-        if (active) {
-            active.scrollIntoView({ block: 'nearest' });
-        }
+        updateActiveGameItem();
     }
 
     function playSelectedGame() {
@@ -818,6 +881,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         if (selectedIndex >= filteredChannels.length) {
             selectedIndex = Math.max(filteredChannels.length - 1, 0);
         }
+
+        const items = ['ALL', ...categories];
+        const idx = items.indexOf(selectedCategory);
+        if (idx >= 0) categoryNavIndex = idx;
 
         renderCategories();
         renderChannelList();
@@ -890,13 +957,15 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         menuPanel.classList.add('open');
         menuPanel.setAttribute('aria-hidden', 'false');
         if (topHud) topHud.classList.remove('hidden');
-        renderChannelList();
+        updateCategoryNavFocus();
+        updateActiveChannelItem();
     }
 
     function closeMenu(selectedChannel) {
         menuOpen = false;
         menuPanel.classList.remove('open');
         menuPanel.setAttribute('aria-hidden', 'true');
+        updateCategoryNavFocus();
         if (selectedChannel) {
             showTopHudTemporarily();
         }
@@ -908,7 +977,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         gamesPanel.classList.add('open');
         gamesPanel.setAttribute('aria-hidden', 'false');
         if (topHud) topHud.classList.remove('hidden');
-        renderGamesList();
+        updateActiveGameItem();
     }
 
     function closeGamesPanel(selectedGame) {
@@ -921,20 +990,17 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     }
 
     function setCategoryByStep(step) {
-        const all = ['ALL', ...categories];
-        const current = all.indexOf(selectedCategory);
-        const next = (current + step + all.length) % all.length;
-        selectedCategory = all[next];
-        selectedIndex = 0;
-        applyCategoryFilter();
-        showToast(selectedCategory === 'ALL' ? 'Todos os canais' : selectedCategory);
+        const items = ['ALL', ...categories];
+        if (!items.length) return;
+        const next = (categoryNavIndex + step + items.length) % items.length;
+        applyCategoryByIndex(next);
     }
 
     function handleRemoteNavigation(event) {
         const key = event.key;
         const keyCode = event.keyCode || 0;
 
-        const isBack = key === 'Backspace' || key === 'Escape' || keyCode === 10009 || keyCode === 461;
+        const isBack = key === 'Backspace' || key === 'Escape' || key === 'BrowserBack' || key === 'GoBack' || keyCode === 8 || keyCode === 27 || keyCode === 166 || keyCode === 10009 || keyCode === 461;
         const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key);
         const isEnter = key === 'Enter' || keyCode === 13;
 
@@ -968,6 +1034,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 openMenu();
             } else {
                 setCategoryByStep(-1);
+                updateCategoryNavFocus();
             }
             return;
         }
@@ -990,10 +1057,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         if (key === 'ArrowUp') {
             if (menuOpen) {
                 selectedIndex = Math.max(0, selectedIndex - 1);
-                renderChannelList();
+                updateActiveChannelItem();
             } else if (gamesOpen) {
                 selectedGameIndex = Math.max(0, selectedGameIndex - 1);
-                renderGamesList();
+                updateActiveGameItem();
             }
             return;
         }
@@ -1001,10 +1068,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         if (key === 'ArrowDown') {
             if (menuOpen) {
                 selectedIndex = Math.min(filteredChannels.length - 1, selectedIndex + 1);
-                renderChannelList();
+                updateActiveChannelItem();
             } else if (gamesOpen) {
                 selectedGameIndex = Math.min(gamesToday.length - 1, selectedGameIndex + 1);
-                renderGamesList();
+                updateActiveGameItem();
             }
             return;
         }
@@ -1020,8 +1087,14 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         if (isBack) {
-            if (menuOpen) closeMenu(false);
-            if (gamesOpen) closeGamesPanel(false);
+            if (menuOpen) {
+                closeMenu(false);
+                return;
+            }
+            if (gamesOpen) {
+                closeGamesPanel(false);
+                return;
+            }
         }
     }
 
@@ -1038,6 +1111,16 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             gamesToday = [];
             renderGamesList();
         }
+    }
+
+    function startGamesAutoRefresh() {
+        if (gamesRefreshTimer) {
+            clearInterval(gamesRefreshTimer);
+            gamesRefreshTimer = null;
+        }
+        gamesRefreshTimer = setInterval(() => {
+            fetchGamesToday();
+        }, 45000);
     }
 
     async function loadChannelsExperience() {
@@ -1059,6 +1142,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             }
 
             await fetchGamesToday();
+            startGamesAutoRefresh();
 
             openMenu();
         } catch (error) {
