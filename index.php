@@ -901,7 +901,7 @@ $viewerProfile = [
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0px;
+            margin-bottom: 10px;
         }
 
         .status-badge {
@@ -1608,11 +1608,21 @@ $viewerProfile = [
                     });
                 }
                 
-                let isActuallyLive = false;
-                let isActuallyFinished = false;
-                let homeScore = '';
-                let awayScore = '';
-                let statusText = game.data?.time || 'HOJE';
+                const apiStatusLabel = String(game.status_label || '').toLowerCase();
+                const apiTimeText = String(game.data?.time || '').toLowerCase();
+
+                let isActuallyFinished = apiStatusLabel.includes('enc') || apiTimeText.includes('fim') || apiTimeText.includes('enc');
+                let isActuallyLive = !isActuallyFinished && (
+                    apiStatusLabel.includes('vivo') ||
+                    apiTimeText.includes('vivo') ||
+                    apiTimeText.includes('andamento') ||
+                    apiTimeText.includes('1t') ||
+                    apiTimeText.includes('2t') ||
+                    String(game.data?.time || '').includes("'")
+                );
+                let homeScore = game.homeScore ?? '';
+                let awayScore = game.awayScore ?? '';
+                let statusText = game.statusText || game.data?.time || 'HOJE';
 
                 // --- ÚNICA REFERÊNCIA: Site do Placar (placardefutebol.com.br) ---
                 if (match) {
@@ -1640,10 +1650,13 @@ $viewerProfile = [
                     const timeMatch = match.statusText.match(/(\d{1,2}):(\d{2})/);
                     const isScheduled = timeMatch && !scraperLive && !scraperFinished;
 
-                    if (scraperLive) {
-                        isActuallyLive = true;
-                    } else if (scraperFinished) {
+                    // Prioriza encerrado sobre ao vivo quando houver sinais mistos.
+                    if (scraperFinished) {
                         isActuallyFinished = true;
+                        isActuallyLive = false;
+                    } else if (scraperLive) {
+                        isActuallyLive = true;
+                        isActuallyFinished = false;
                     } else if (isScheduled) {
                         // Jogo agendado — mantém como Agendado
                         isActuallyLive = false;
@@ -2923,9 +2936,9 @@ $viewerProfile = [
         align-items: center; justify-content: center;
     ">
         <div style="
-            background: #0f111a; border: 1px solid rgba(239,68,68,0.3);
+            background: #0f111a; border: 1px solid rgb(57 128 245 / 23%);
             border-radius: 20px; padding: 40px 32px; max-width: 400px; width: 90%;
-            text-align: center; box-shadow: 0 0 60px rgba(239,68,68,0.15);
+            text-align: center; box-shadow: 0 0 60px rgb(57 127 245 / 23%);
             font-family: 'Outfit', sans-serif;
         ">
             <div style="font-size: 44px; margin-bottom: 16px;">🔒</div>

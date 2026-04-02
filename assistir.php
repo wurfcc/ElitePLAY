@@ -421,9 +421,10 @@ if (empty($iframe_url)) {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     ">
         <div style="
-            background: #0f111a; border: 1px solid rgba(239,68,68,0.3);
+            background: #0f111a; border: 1px solid rgb(57 128 245 / 23%);
             border-radius: 20px; padding: 40px 32px; max-width: 400px; width: 90%;
-            text-align: center; box-shadow: 0 0 60px rgba(239,68,68,0.15);
+            text-align: center; box-shadow: 0 0 60px rgb(57 127 245 / 23%);
+            font-family: 'Outfit', sans-serif;
         ">
             <div style="font-size: 48px; margin-bottom: 16px;">🔒</div>
             <h2 style="color:#fff; font-size:20px; margin-bottom:10px;">Sessão encerrada</h2>
