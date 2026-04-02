@@ -62,23 +62,25 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             justify-content: space-between;
             background: linear-gradient(180deg, rgba(2, 6, 23, 0.78), rgba(2, 6, 23, 0));
             pointer-events: none;
+            opacity: 1;
+            transition: opacity 0.24s ease;
+        }
+
+        .top-hud.hidden {
+            opacity: 0;
         }
 
         .brand {
-            display: grid;
-            gap: 4px;
+            display: block;
+            line-height: 0;
         }
 
-        .brand strong {
-            font-size: 22px;
-            letter-spacing: 0.4px;
-        }
-
-        .brand span {
-            color: var(--muted);
-            font-size: 12px;
-            letter-spacing: 0.6px;
-            text-transform: uppercase;
+        .brand img {
+            width: 220px;
+            max-width: 36vw;
+            height: auto;
+            display: block;
+            object-fit: contain;
         }
 
         .channel-hud {
@@ -90,13 +92,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             margin: 0;
             font-size: 26px;
             text-shadow: 0 3px 20px rgba(0, 0, 0, 0.65);
-        }
-
-        .channel-hud p {
-            margin: 4px 0 0;
-            color: #cbd5e1;
-            font-size: 13px;
-            letter-spacing: 0.4px;
         }
 
         .menu-panel {
@@ -114,6 +109,24 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             display: grid;
             grid-template-rows: auto auto 1fr auto;
         }
+
+        .games-panel {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: min(42vw, 540px);
+            z-index: 30;
+            transform: translateX(102%);
+            transition: transform 0.28s ease;
+            background: var(--panel-strong);
+            border-left: 1px solid var(--line);
+            backdrop-filter: blur(8px);
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+        }
+
+        .games-panel.open { transform: translateX(0); }
 
         .menu-panel.open { transform: translateX(0); }
 
@@ -169,6 +182,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             overflow-y: auto;
             display: grid;
             gap: 8px;
+            contain: content;
         }
 
         .channel-list::-webkit-scrollbar { width: 6px; }
@@ -178,35 +192,25 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             border: 1px solid rgba(148, 163, 184, 0.2);
             border-radius: 12px;
             background: rgba(8, 15, 35, 0.82);
-            padding: 10px;
+            padding: 14px;
             display: grid;
             grid-template-columns: 72px 1fr;
             gap: 10px;
             align-items: center;
+            transition: background-color 0.14s linear, border-color 0.14s linear, box-shadow 0.14s linear;
         }
 
         .channel-item img {
-            width: 72px;
-            height: 48px;
-            border-radius: 8px;
-            object-fit: cover;
-            background: #0f172a;
-            border: 1px solid rgba(148, 163, 184, 0.3);
+            width: 74px;
+            height: 50px;
+            object-fit: contain;
             pointer-events: none;
         }
 
         .channel-item .name {
-            font-size: 15px;
-            font-weight: 700;
+            font-size: 22px;
+            font-weight: 600;
             line-height: 1.2;
-        }
-
-        .channel-item .meta {
-            margin-top: 4px;
-            color: var(--muted);
-            font-size: 11px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
         }
 
         .channel-item.active {
@@ -223,6 +227,91 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             display: flex;
             gap: 14px;
             flex-wrap: wrap;
+        }
+
+        .games-list {
+            margin: 0;
+            padding: 10px;
+            list-style: none;
+            overflow-y: auto;
+            display: grid;
+            gap: 8px;
+            contain: content;
+        }
+
+        .games-list::-webkit-scrollbar { width: 6px; }
+        .games-list::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.35); border-radius: 999px; }
+
+        .game-item {
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            background: rgba(8, 15, 35, 0.82);
+            padding: 12px;
+            display: grid;
+            gap: 10px;
+            transition: background-color 0.14s linear, border-color 0.14s linear, box-shadow 0.14s linear;
+        }
+
+        .game-item.active {
+            border-color: var(--focus);
+            background: linear-gradient(135deg, rgba(12, 74, 110, 0.5), rgba(7, 17, 38, 0.9));
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
+        }
+
+        .game-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .game-time {
+            font-size: 15px;
+            font-weight: 700;
+            color: #e2e8f0;
+        }
+
+        .game-status {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #7dd3fc;
+            border: 1px solid rgba(125, 211, 252, 0.35);
+            border-radius: 999px;
+            padding: 3px 8px;
+        }
+
+        .game-league {
+            font-size: 12px;
+            color: #93c5fd;
+            line-height: 1.2;
+        }
+
+        .game-teams {
+            display: grid;
+            gap: 8px;
+        }
+
+        .game-team {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .game-team img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            pointer-events: none;
+            flex-shrink: 0;
+        }
+
+        .game-team span {
+            font-size: 14px;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .hint-pill {
@@ -325,12 +414,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
     <div class="top-hud">
         <div class="brand">
-            <strong>ElitePLAY Smart TV</strong>
-            <span>Use ArrowLeft para abrir canais</span>
+            <img src="imagens/elitelogo.webp" alt="ElitePLAY">
         </div>
         <div class="channel-hud">
             <h1 id="hud-channel-name">Carregando canais...</h1>
-            <p id="hud-channel-meta">Aguardando reproducao</p>
         </div>
     </div>
 
@@ -345,7 +432,21 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             <span class="hint-pill">LEFT: abrir menu</span>
             <span class="hint-pill">UP/DOWN: navegar</span>
             <span class="hint-pill">ENTER: reproduzir</span>
-            <span class="hint-pill">RIGHT/BACK: fechar</span>
+            <span class="hint-pill">RIGHT: jogos hoje</span>
+        </div>
+    </aside>
+
+    <aside class="games-panel" id="games-panel" aria-hidden="true">
+        <div class="menu-head">
+            <h2>Jogos de hoje</h2>
+            <p>Setas para navegar, Enter para assistir</p>
+        </div>
+        <ul class="games-list" id="games-list"></ul>
+        <div class="menu-foot">
+            <span class="hint-pill">RIGHT: abrir jogos</span>
+            <span class="hint-pill">UP/DOWN: navegar</span>
+            <span class="hint-pill">ENTER: abrir jogo</span>
+            <span class="hint-pill">LEFT/BACK: fechar</span>
         </div>
     </aside>
 
@@ -368,10 +469,12 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     const SMARTTV_PAIR_API = 'smarttv_pair_api.php';
     const SMARTTV_TOKEN_KEY = 'eliteplay_smarttv_token';
     const menuPanel = document.getElementById('menu-panel');
+    const gamesPanel = document.getElementById('games-panel');
     const categoryRow = document.getElementById('category-row');
     const channelList = document.getElementById('channel-list');
+    const gamesList = document.getElementById('games-list');
+    const topHud = document.querySelector('.top-hud');
     const hudName = document.getElementById('hud-channel-name');
-    const hudMeta = document.getElementById('hud-channel-meta');
     const video = document.getElementById('tv-player');
     const toast = document.getElementById('toast');
     const authOverlay = document.getElementById('auth-overlay');
@@ -381,14 +484,34 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     let hls = null;
     let channels = [];
     let filteredChannels = [];
+    let gamesToday = [];
     let categories = [];
     let selectedCategory = 'ALL';
     let selectedIndex = 0;
+    let selectedGameIndex = 0;
     let menuOpen = false;
+    let gamesOpen = false;
     let lastOkAt = 0;
     let smartTvAuthorized = false;
     let pairId = '';
     let pairPollTimer = null;
+    let hudHideTimer = null;
+
+    function showTopHudTemporarily() {
+        if (!topHud) return;
+
+        if (hudHideTimer) {
+            clearTimeout(hudHideTimer);
+            hudHideTimer = null;
+        }
+
+        topHud.classList.remove('hidden');
+        hudHideTimer = setTimeout(() => {
+            if (!menuOpen) {
+                topHud.classList.add('hidden');
+            }
+        }, 3000);
+    }
 
     function setPairStatus(message) {
         if (pairStatus) {
@@ -486,6 +609,87 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }).filter(c => !!c.streamUrl);
     }
 
+    function gameStatusByTimer(start, end) {
+        const now = Date.now() / 1000;
+        if (start && end && now >= start && now <= end) return 'AO VIVO';
+        if (end && now > end) return 'ENCERRADO';
+        return 'AGENDADO';
+    }
+
+    function formatGameHour(ts) {
+        if (!ts) return '--:--';
+        const d = new Date(ts * 1000);
+        return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function mapGames(payload) {
+        const raw = Array.isArray(payload) ? payload : [];
+        return raw.map((item, idx) => {
+            const timer = item?.data?.timer || {};
+            const start = Number(timer.start || 0);
+            const end = Number(timer.end || 0);
+            const teams = item?.data?.teams || {};
+            const home = teams.home || {};
+            const away = teams.away || {};
+
+            return {
+                id: `gm_${idx}_${start}`,
+                title: String(item?.title || ''),
+                league: String(item?.data?.league || 'Jogo de hoje'),
+                image: String(item?.image || ''),
+                start,
+                end,
+                status: gameStatusByTimer(start, end),
+                hourLabel: formatGameHour(start),
+                homeName: String(home.name || 'Time mandante'),
+                homeImg: String(home.image || ''),
+                awayName: String(away.name || 'Time visitante'),
+                awayImg: String(away.image || ''),
+                players: Array.isArray(item?.players) ? item.players : [],
+            };
+        }).sort((a, b) => a.start - b.start);
+    }
+
+    function normalizeChannelToken(value) {
+        return normalizeText(value).replace(/[^a-z0-9]/g, '');
+    }
+
+    function findChannelForGame(game) {
+        if (!game || !Array.isArray(game.players)) return null;
+
+        for (const playerRef of game.players) {
+            const ref = String(playerRef || '');
+            if (ref.includes('.m3u8')) {
+                return {
+                    name: game.title || 'Jogo ao vivo',
+                    category: 'JOGOS',
+                    streamUrl: ref,
+                };
+            }
+
+            let token = '';
+            try {
+                const url = new URL(ref);
+                const pieces = url.pathname.split('/').filter(Boolean);
+                token = pieces.length ? pieces[pieces.length - 1] : '';
+            } catch (e) {
+                token = ref.split('/').filter(Boolean).pop() || '';
+            }
+
+            const wanted = normalizeChannelToken(token).replace(/^sporto/, 'sportv');
+            if (!wanted) continue;
+
+            const found = channels.find(ch => {
+                const cname = normalizeChannelToken(ch.name).replace(/^sporto/, 'sportv');
+                return cname.includes(wanted) || wanted.includes(cname);
+            });
+
+            if (found) return found;
+        }
+
+        return null;
+    }
+
     function renderCategories() {
         categoryRow.innerHTML = '';
         const items = ['ALL', ...categories];
@@ -526,12 +730,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             nameEl.className = 'name';
             nameEl.textContent = channel.name;
 
-            const metaEl = document.createElement('div');
-            metaEl.className = 'meta';
-            metaEl.textContent = channel.category;
-
             infoWrap.appendChild(nameEl);
-            infoWrap.appendChild(metaEl);
 
             li.appendChild(thumb);
             li.appendChild(infoWrap);
@@ -540,7 +739,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 selectedIndex = index;
                 renderChannelList();
                 playSelectedChannel();
-                closeMenu();
+                closeMenu(true);
             });
 
             channelList.appendChild(li);
@@ -550,6 +749,63 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         if (active) {
             active.scrollIntoView({ block: 'nearest' });
         }
+    }
+
+    function renderGamesList() {
+        if (!gamesToday.length) {
+            gamesList.innerHTML = '<li class="game-item"><div class="game-league">Nenhum jogo encontrado para hoje.</div></li>';
+            return;
+        }
+
+        gamesList.innerHTML = '';
+
+        gamesToday.forEach((game, index) => {
+            const li = document.createElement('li');
+            li.className = 'game-item' + (selectedGameIndex === index ? ' active' : '');
+            li.dataset.index = String(index);
+
+            const homeLogo = game.homeImg || game.image || 'imagens/elitelogo.webp';
+            const awayLogo = game.awayImg || game.image || 'imagens/elitelogo.webp';
+
+            li.innerHTML = `
+                <div class="game-top">
+                    <span class="game-time">${game.hourLabel}</span>
+                    <span class="game-status">${game.status}</span>
+                </div>
+                <div class="game-league">${game.league}</div>
+                <div class="game-teams">
+                    <div class="game-team"><img src="${homeLogo}" alt="${game.homeName}"><span>${game.homeName}</span></div>
+                    <div class="game-team"><img src="${awayLogo}" alt="${game.awayName}"><span>${game.awayName}</span></div>
+                </div>
+            `;
+
+            li.addEventListener('click', () => {
+                selectedGameIndex = index;
+                renderGamesList();
+                playSelectedGame();
+            });
+
+            gamesList.appendChild(li);
+        });
+
+        const active = gamesList.querySelector('.game-item.active');
+        if (active) {
+            active.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function playSelectedGame() {
+        const game = gamesToday[selectedGameIndex];
+        if (!game) return;
+
+        const matched = findChannelForGame(game);
+        if (!matched) {
+            showToast('Canal deste jogo nao encontrado');
+            return;
+        }
+
+        playChannel(matched);
+        closeGamesPanel(true);
     }
 
     function applyCategoryFilter() {
@@ -581,7 +837,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         const stream = channel.streamUrl;
         hudName.textContent = channel.name;
-        hudMeta.textContent = `Categoria: ${channel.category}`;
+        showTopHudTemporarily();
 
         destroyPlayer();
 
@@ -629,16 +885,39 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     }
 
     function openMenu() {
+        closeGamesPanel(false);
         menuOpen = true;
         menuPanel.classList.add('open');
         menuPanel.setAttribute('aria-hidden', 'false');
+        if (topHud) topHud.classList.remove('hidden');
         renderChannelList();
     }
 
-    function closeMenu() {
+    function closeMenu(selectedChannel) {
         menuOpen = false;
         menuPanel.classList.remove('open');
         menuPanel.setAttribute('aria-hidden', 'true');
+        if (selectedChannel) {
+            showTopHudTemporarily();
+        }
+    }
+
+    function openGamesPanel() {
+        closeMenu(false);
+        gamesOpen = true;
+        gamesPanel.classList.add('open');
+        gamesPanel.setAttribute('aria-hidden', 'false');
+        if (topHud) topHud.classList.remove('hidden');
+        renderGamesList();
+    }
+
+    function closeGamesPanel(selectedGame) {
+        gamesOpen = false;
+        gamesPanel.classList.remove('open');
+        gamesPanel.setAttribute('aria-hidden', 'true');
+        if (selectedGame) {
+            showTopHudTemporarily();
+        }
     }
 
     function setCategoryByStep(step) {
@@ -682,7 +961,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         if (key === 'ArrowLeft') {
-            if (!menuOpen) {
+            if (gamesOpen) {
+                closeGamesPanel(false);
+                openMenu();
+            } else if (!menuOpen) {
                 openMenu();
             } else {
                 setCategoryByStep(-1);
@@ -692,13 +974,13 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         if (key === 'ArrowRight') {
             if (menuOpen) {
-                playSelectedChannel();
-                closeMenu();
+                closeMenu(false);
             }
+            openGamesPanel();
             return;
         }
 
-        if (!menuOpen) {
+        if (!menuOpen && !gamesOpen) {
             if (isBack) {
                 showToast('Pressione ArrowLeft para abrir canais');
             }
@@ -706,25 +988,55 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         if (key === 'ArrowUp') {
-            selectedIndex = Math.max(0, selectedIndex - 1);
-            renderChannelList();
+            if (menuOpen) {
+                selectedIndex = Math.max(0, selectedIndex - 1);
+                renderChannelList();
+            } else if (gamesOpen) {
+                selectedGameIndex = Math.max(0, selectedGameIndex - 1);
+                renderGamesList();
+            }
             return;
         }
 
         if (key === 'ArrowDown') {
-            selectedIndex = Math.min(filteredChannels.length - 1, selectedIndex + 1);
-            renderChannelList();
+            if (menuOpen) {
+                selectedIndex = Math.min(filteredChannels.length - 1, selectedIndex + 1);
+                renderChannelList();
+            } else if (gamesOpen) {
+                selectedGameIndex = Math.min(gamesToday.length - 1, selectedGameIndex + 1);
+                renderGamesList();
+            }
             return;
         }
 
         if (isEnter) {
-            playSelectedChannel();
-            closeMenu();
+            if (menuOpen) {
+                playSelectedChannel();
+                closeMenu(true);
+            } else if (gamesOpen) {
+                playSelectedGame();
+            }
             return;
         }
 
         if (isBack) {
-            closeMenu();
+            if (menuOpen) closeMenu(false);
+            if (gamesOpen) closeGamesPanel(false);
+        }
+    }
+
+    async function fetchGamesToday() {
+        try {
+            const response = await fetch(`proxy_embedtv.php?resource=jogos&_t=${Date.now()}`, { cache: 'no-store' });
+            const payload = await response.json();
+            gamesToday = mapGames(payload);
+            if (selectedGameIndex >= gamesToday.length) {
+                selectedGameIndex = Math.max(0, gamesToday.length - 1);
+            }
+            renderGamesList();
+        } catch (error) {
+            gamesToday = [];
+            renderGamesList();
         }
     }
 
@@ -744,13 +1056,13 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 playSelectedChannel();
             } else {
                 hudName.textContent = 'Nenhum canal disponivel';
-                hudMeta.textContent = 'Verifique a API de canais';
             }
+
+            await fetchGamesToday();
 
             openMenu();
         } catch (error) {
             hudName.textContent = 'Erro ao carregar canais';
-            hudMeta.textContent = 'Tente novamente em alguns segundos';
         }
     }
 
