@@ -2,9 +2,15 @@
 require_once __DIR__ . '/security.php';
 configurar_sessao();
 
+$nextRaw = trim((string)($_GET['next'] ?? ''));
+$nextRedirect = 'index.php';
+if ($nextRaw !== '' && strpos($nextRaw, '://') === false && strpos($nextRaw, 'javascript:') === false && strpos($nextRaw, "\n") === false && strpos($nextRaw, "\r") === false) {
+    $nextRedirect = ltrim($nextRaw, '/');
+}
+
 // Se já estiver logado, redireciona direto
 if (validar_sessao_cookie() !== null) {
-    header('Location: index.php');
+    header('Location: ' . $nextRedirect);
     exit;
 }
 
@@ -618,7 +624,7 @@ $csrf = csrf_token();
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, csrf: '<?php echo $csrf; ?>' })
+                    body: JSON.stringify({ email, csrf: '<?php echo $csrf; ?>', redirect: '<?php echo htmlspecialchars($nextRedirect, ENT_QUOTES, 'UTF-8'); ?>' })
                 }).catch(() => null);
 
                 if (response) {

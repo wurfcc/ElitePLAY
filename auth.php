@@ -31,6 +31,7 @@ if (!is_array($input)) {
 
 $email      = trim(strtolower($input['email'] ?? ''));
 $csrf       = trim($input['csrf'] ?? '');
+$redirectIn = trim((string)($input['redirect'] ?? ''));
 $ip         = ip_cliente();
 
 // --- 1. Validação de CSRF ---
@@ -107,6 +108,10 @@ if (!$usuario || !$usuario['ativo']) {
 $userExpiresAt = null;
 $redirectAfterLogin = 'index.php';
 $expiredAccess = false;
+
+if ($redirectIn !== '' && strpos($redirectIn, '://') === false && strpos(strtolower($redirectIn), 'javascript:') === false && strpos($redirectIn, "\n") === false && strpos($redirectIn, "\r") === false) {
+    $redirectAfterLogin = ltrim($redirectIn, '/');
+}
 
 if ((int)$usuario['is_admin'] !== 1) {
     $diasAcesso = $usuario['dias_acesso'];

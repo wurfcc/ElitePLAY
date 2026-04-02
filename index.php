@@ -1507,19 +1507,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
         }
 
         async function authorizeSmartTvAccess() {
-            const res = await fetch('smarttv_pair_api.php?action=authorize_latest', {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            }).then(r => r.json()).catch(() => null);
-
-            if (res?.ok) {
-                alert('Smart TV autorizada com sucesso! Volte na TV para continuar.');
-                return;
-            }
-
-            alert(res?.error || 'Não foi possível autorizar Smart TV agora.');
+            alert('Abra /s na Smart TV e escaneie o QR Code com o celular para autorizar.');
         }
 
         function closeProfileModal() {

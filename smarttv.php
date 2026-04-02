@@ -420,6 +420,28 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             flex-wrap: wrap;
         }
 
+        .auth-qr-wrap {
+            display: grid;
+            justify-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .auth-qr {
+            width: 220px;
+            height: 220px;
+            border-radius: 12px;
+            border: 1px solid rgba(148,163,184,0.35);
+            background: #fff;
+            object-fit: contain;
+        }
+
+        .auth-code {
+            font-size: 13px;
+            letter-spacing: 1.1px;
+            color: #bfdbfe;
+        }
+
         .auth-btn {
             border: 1px solid rgba(56, 189, 248, 0.35);
             background: rgba(56, 189, 248, 0.16);
@@ -512,7 +534,11 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     <div class="auth-overlay" id="auth-overlay">
         <div class="auth-card">
             <h2>Autorizar aplicativo pelo celular</h2>
-            <p>Faça login no seu celular e clique no icone de cadeado no topo do header.</p>
+            <p>Escaneie o QR Code, faça login no celular e confirme a autorização.</p>
+            <div class="auth-qr-wrap">
+                <img class="auth-qr" id="auth-qr" alt="QR Code para autorizar Smart TV" src="">
+                <div class="auth-code" id="auth-code">Gerando pareamento...</div>
+            </div>
             <p class="pair-status" id="pair-status">Aguardando autorização...</p>
             <div class="auth-actions">
                 <button class="auth-btn" type="button" id="retry-pair-btn">Tentar novamente</button>
@@ -539,6 +565,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     const video = document.getElementById('tv-player');
     const toast = document.getElementById('toast');
     const authOverlay = document.getElementById('auth-overlay');
+    const authQr = document.getElementById('auth-qr');
+    const authCode = document.getElementById('auth-code');
     const pairStatus = document.getElementById('pair-status');
     const retryPairBtn = document.getElementById('retry-pair-btn');
 
@@ -1392,6 +1420,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         pairId = '';
         showAuthOverlay();
         setPairStatus('Aguardando autorização...');
+        if (authCode) authCode.textContent = 'Gerando pareamento...';
+        if (authQr) authQr.removeAttribute('src');
 
         const created = await fetch(`${SMARTTV_PAIR_API}?action=create`, {
             method: 'POST',
@@ -1404,6 +1434,12 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         pairId = created.pair_id;
+        if (authCode) {
+            authCode.textContent = created.pair_code ? `Codigo: ${created.pair_code}` : 'Escaneie para autorizar';
+        }
+        if (authQr && created.qr_image) {
+            authQr.src = created.qr_image;
+        }
         setPairStatus('Aguardando autorização pelo celular...');
         pairPollTimer = setInterval(checkPairStatus, 2500);
         checkPairStatus();
