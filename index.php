@@ -449,38 +449,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
 
         .home-banner-slide img {
             object-fit: cover;
-        }
-
-        .home-banner-dots {
-            position: absolute;
-            left: 50%;
-            bottom: 10px;
-            transform: translateX(-50%);
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 8px;
-            border-radius: 999px;
-            background: rgba(8, 11, 18, 0.7);
-            border: 1px solid rgba(148, 163, 184, 0.3);
-            backdrop-filter: blur(6px);
-            -webkit-backdrop-filter: blur(6px);
-        }
-
-        .home-banner-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            border: none;
-            padding: 0;
-            background: rgba(148, 163, 184, 0.8);
-            cursor: pointer;
-            transition: transform 0.2s ease, background-color 0.2s ease;
-        }
-
-        .home-banner-dot.active {
-            background: #ffffff;
-            transform: scale(1.2);
+            pointer-events: none;
         }
 
         .sidebar-toggle {
@@ -588,9 +557,6 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                 aspect-ratio: 4 / 3;
             }
 
-            .home-banner-dots {
-                bottom: 8px;
-            }
         }
 
         .section-title {
@@ -1375,11 +1341,6 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                         <img src="<?php echo htmlspecialchars($desktopImage, ENT_QUOTES, 'UTF-8'); ?>" alt="Banner ElitePLAY" loading="lazy">
                     </picture>
                 </a>
-                <?php endforeach; ?>
-            </div>
-            <div class="home-banner-dots" id="home-banner-dots">
-                <?php foreach ($homeBannerSlides as $index => $_slide): ?>
-                <button type="button" class="home-banner-dot<?php echo $index === 0 ? ' active' : ''; ?>" data-banner-index="<?php echo $index; ?>" aria-label="Ir para banner <?php echo $index + 1; ?>"></button>
                 <?php endforeach; ?>
             </div>
         </div>
@@ -3015,11 +2976,9 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
         function initHomeBannerCarousel() {
             const carousel = document.getElementById('home-banner-carousel');
             const track = document.getElementById('home-banner-track');
-            const dotsWrap = document.getElementById('home-banner-dots');
-            if (!carousel || !track || !dotsWrap) return;
+            if (!carousel || !track) return;
 
             const slides = track.querySelectorAll('.home-banner-slide');
-            const dots = dotsWrap.querySelectorAll('.home-banner-dot');
             if (!slides.length) return;
 
             let currentIndex = 0;
@@ -3028,9 +2987,6 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
             const goToSlide = (idx) => {
                 currentIndex = (idx + slides.length) % slides.length;
                 track.style.transform = `translateX(-${currentIndex * 100}%)`;
-                dots.forEach((dot, dotIdx) => {
-                    dot.classList.toggle('active', dotIdx === currentIndex);
-                });
             };
 
             const startAuto = () => {
@@ -3038,19 +2994,6 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                 if (autoTimer) clearInterval(autoTimer);
                 autoTimer = setInterval(() => goToSlide(currentIndex + 1), 5000);
             };
-
-            dots.forEach((dot) => {
-                dot.addEventListener('click', () => {
-                    const idx = Number(dot.dataset.bannerIndex || 0);
-                    goToSlide(idx);
-                    startAuto();
-                });
-            });
-
-            carousel.addEventListener('mouseenter', () => {
-                if (autoTimer) clearInterval(autoTimer);
-            });
-            carousel.addEventListener('mouseleave', startAuto);
 
             goToSlide(0);
             startAuto();
