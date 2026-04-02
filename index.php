@@ -2509,8 +2509,17 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
             };
             categoriesContainer.appendChild(jogosBtn);
 
+            // Botão fixo SPORTV
+            const sportvBtn = document.createElement('button');
+            sportvBtn.className = 'cat-btn';
+            sportvBtn.innerText = 'SPORTV';
+            sportvBtn.onclick = () => { filterByCategory('__sportv__', sportvBtn); closeSidebar(); };
+            categoriesContainer.appendChild(sportvBtn);
+
             // Demais categorias na ordem definida
-            orderedCategories.forEach(cat => {
+            orderedCategories
+                .filter(cat => String(cat).toLowerCase() !== 'sportv')
+                .forEach(cat => {
                 const btn = document.createElement('button');
                 btn.className = 'cat-btn';
                 btn.innerText = cat.toUpperCase();
@@ -2781,11 +2790,20 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
             horizontalSection.style.display = 'none';
             grid.style.display = 'grid';
 
-            // Filtra os canais pela categoria (com fallback para lowercase check para segurança)
-            const filtered = allChannels.filter(c => 
-                c.categoria === category || 
-                (c.categoria && category && c.categoria.toLowerCase() === category.toLowerCase())
-            );
+            // Filtra os canais pela categoria
+            let filtered = [];
+            if (category === '__sportv__') {
+                filtered = allChannels.filter(c => {
+                    const channelName = String(c.nome || '').toLowerCase();
+                    const channelCategory = String(c.categoria || '').toLowerCase();
+                    return channelName.includes('sportv') || channelName.includes('sporto') || channelName.includes('spor tv') || channelCategory === 'sportv';
+                });
+            } else {
+                filtered = allChannels.filter(c =>
+                    c.categoria === category ||
+                    (c.categoria && category && c.categoria.toLowerCase() === category.toLowerCase())
+                );
+            }
             
             renderChannels(filtered);
             
@@ -2793,7 +2811,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
             const mainTitleRow = document.querySelector('.channels-section .section-header-premium');
             if (mainTitleRow) {
                 mainTitleRow.innerHTML = `
-                    <h2 class="section-title">${category.toUpperCase()}</h2>
+                    <h2 class="section-title">${category === '__sportv__' ? 'SPORTV' : category.toUpperCase()}</h2>
                     <span class="count-badge-premium">${filtered.length}</span>
                 `;
             }
