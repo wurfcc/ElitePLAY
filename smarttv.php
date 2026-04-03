@@ -748,14 +748,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         return isM3U8(u);
     }
 
-    function toBase64Utf8(value) {
-        try {
-            return btoa(unescape(encodeURIComponent(String(value || ''))));
-        } catch (e) {
-            return btoa(String(value || ''));
-        }
-    }
-
     function build70PlayerUrl(embedUrl, fallbackName = 'Canal') {
         try {
             const u = new URL(String(embedUrl || ''));
@@ -764,15 +756,12 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 return String(embedUrl || '');
             }
 
-            const id = u.searchParams.get('v');
-            if (!id) {
-                return String(embedUrl || '');
+            const withName = new URL(u.toString());
+            if (!withName.searchParams.get('n') && fallbackName) {
+                withName.searchParams.set('n', fallbackName);
             }
 
-            const nameRaw = u.searchParams.get('n') || fallbackName;
-            const img = u.searchParams.get('i') || '';
-            const nameB64 = toBase64Utf8(nameRaw);
-            return `https://embed.70noticias.com.br/player.php?type=live_streams&id=${encodeURIComponent(id)}&ext=m3u8&name=${encodeURIComponent(nameB64)}&img=${encodeURIComponent(img)}&autoplay=1&autoPlay=1&play=1&start=1&muted=1`;
+            return `smarttv_embed_relay.php?url=${encodeURIComponent(withName.toString())}`;
         } catch (e) {
             return String(embedUrl || '');
         }
