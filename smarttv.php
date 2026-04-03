@@ -103,7 +103,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             left: 0;
             bottom: 0;
             width: min(42vw, 540px);
-            z-index: 30;
+            z-index: 31;
             transform: translate3d(-102%, 0, 0);
             transition: transform 0.16s ease-out;
             background: var(--panel-strong);
@@ -114,9 +114,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             contain: layout paint;
         }
 
-        .menu-panel.with-category {
-            transform: translate3d(190px, 0, 0);
-        }
+        .menu-panel.with-category { transform: translate3d(182px, 0, 0); }
 
         .category-panel {
             position: absolute;
@@ -124,10 +122,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             left: 0;
             bottom: 0;
             width: 182px;
-            z-index: 31;
+            z-index: 30;
             transform: translate3d(-102%, 0, 0);
             transition: transform 0.16s ease-out;
-            background: rgba(3, 12, 35, 0.98);
+            background: #030c23;
             border-right: 1px solid var(--line);
             display: grid;
             grid-template-rows: auto 1fr auto;
@@ -931,6 +929,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         categoryNavIndex = safeIndex;
         selectedCategory = categories[safeIndex];
         selectedIndex = 0;
+        if (channelList) channelList.scrollTop = 0;
         applyCategoryFilter();
     }
 
