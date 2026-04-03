@@ -59,6 +59,16 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             background: #000;
         }
 
+        #tv-iframe-player {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            background: #000;
+            display: none;
+        }
+
         .top-hud {
             position: absolute;
             inset: 0 0 auto 0;
@@ -269,6 +279,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             display: grid;
             gap: 8px;
             contain: content;
+            -webkit-overflow-scrolling: touch;
         }
 
         .games-list::-webkit-scrollbar { width: 6px; }
@@ -276,12 +287,13 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         .game-item {
             border: 1px solid rgba(148, 163, 184, 0.2);
-            border-radius: 16px;
+            border-radius: 12px;
             background: rgba(8, 15, 35, 0.82);
-            padding: 0;
+            padding: 12px;
             display: grid;
-            gap: 0;
-            overflow: hidden;
+            gap: 10px;
+            color: #e2e8f0;
+            min-height: 190px;
             transition: background-color 0.14s linear, border-color 0.14s linear, box-shadow 0.14s linear;
         }
 
@@ -295,10 +307,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             display: flex;
             align-items: center;
             justify-content: flex-start;
-            min-height: 54px;
-            padding: 0 14px;
+            padding-bottom: 10px;
             border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-            background: linear-gradient(90deg, rgba(7, 18, 44, 0.96), rgba(3, 12, 35, 0.92));
         }
 
         .game-head-title {
@@ -312,9 +322,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         .game-body {
             display: grid;
-            gap: 14px;
-            padding: 14px;
-            background: linear-gradient(180deg, rgba(2, 8, 26, 0.98), rgba(2, 8, 26, 0.88));
+            gap: 10px;
         }
 
         .game-badges {
@@ -381,17 +389,17 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         .game-score-box {
             border: 1px solid rgba(148,163,184,0.28);
-            border-radius: 16px;
+            border-radius: 12px;
             background: rgba(30, 41, 59, 0.45);
-            min-width: 112px;
-            padding: 10px 12px;
+            min-width: 110px;
+            padding: 8px 10px;
             display: grid;
             justify-items: center;
             gap: 2px;
         }
 
         .game-score {
-            font-size: 48px;
+            font-size: 34px;
             font-weight: 700;
             line-height: 1;
             letter-spacing: 0.3px;
@@ -413,7 +421,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         .game-foot {
-            margin-top: 10px;
             border-top: 1px solid rgba(148,163,184,0.2);
             padding-top: 10px;
             display: flex;
@@ -549,16 +556,15 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         .quality-panel {
             position: absolute;
-            right: 20px;
-            bottom: 20px;
-            width: min(360px, 42vw);
-            max-height: 58vh;
-            overflow: auto;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 14px;
+            width: min(92vw, 1280px);
             z-index: 41;
             border: 1px solid rgba(148,163,184,0.35);
             border-radius: 14px;
             background: rgba(2, 10, 30, 0.94);
-            padding: 10px;
+            padding: 12px;
             display: none;
             gap: 8px;
             backdrop-filter: blur(6px);
@@ -569,10 +575,18 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         .quality-title {
-            font-size: 13px;
+            font-size: 18px;
             color: #cbd5e1;
             font-weight: 600;
-            padding: 2px 4px 6px;
+            padding: 2px 6px 8px;
+        }
+
+        #quality-list {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 2px;
         }
 
         .quality-item {
@@ -580,9 +594,11 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             border-radius: 10px;
             background: rgba(15,23,42,0.82);
             color: #e2e8f0;
-            font-size: 14px;
+            font-size: 20px;
             font-weight: 600;
-            padding: 10px 12px;
+            padding: 12px 18px;
+            min-width: 140px;
+            white-space: nowrap;
         }
 
         .quality-item.active {
@@ -595,6 +611,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 <body>
 <div class="screen">
     <video id="tv-player" autoplay playsinline muted></video>
+    <iframe id="tv-iframe-player" title="Smart TV Player"></iframe>
 
     <div class="top-hud">
         <div class="brand">
@@ -667,6 +684,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     const topHud = document.querySelector('.top-hud');
     const hudName = document.getElementById('hud-channel-name');
     const video = document.getElementById('tv-player');
+    const iframePlayer = document.getElementById('tv-iframe-player');
     const toast = document.getElementById('toast');
     const qualityPanel = document.getElementById('quality-panel');
     const qualityList = document.getElementById('quality-list');
@@ -706,6 +724,17 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     let qualityOpen = false;
 
     const FIXED_CATEGORIES = ['TODOS', 'TELECINE', 'PREMIERE', 'SPORTV', 'ESPN', 'ESPORTES', 'HBO', 'BBB', 'ABERTOS'];
+
+    function isM3U8(url) {
+        return /\.m3u8(\?|$)/i.test(String(url || ''));
+    }
+
+    function shouldUseProxy(url) {
+        if (!url) return false;
+        const u = String(url);
+        if (u.includes('s27-usa-cloudfront-net.online')) return false;
+        return isM3U8(u);
+    }
 
     function showTopHudTemporarily() {
         if (!topHud) return;
@@ -1377,6 +1406,11 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             hls.destroy();
             hls = null;
         }
+
+        iframePlayer.src = 'about:blank';
+        iframePlayer.style.display = 'none';
+        video.style.display = 'block';
+
         video.removeAttribute('src');
         video.load();
     }
@@ -1392,9 +1426,20 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         destroyPlayer();
 
+        if (!isM3U8(stream)) {
+            video.style.display = 'none';
+            iframePlayer.style.display = 'block';
+            iframePlayer.src = stream;
+            return;
+        }
+
+        const finalStream = shouldUseProxy(stream)
+            ? `proxy.php?url=${encodeURIComponent(stream)}`
+            : stream;
+
         const canUseNative = video.canPlayType('application/vnd.apple.mpegurl');
         if (canUseNative) {
-            video.src = stream;
+            video.src = finalStream;
             video.muted = false;
             video.play().catch(() => {
                 video.muted = true;
@@ -1409,7 +1454,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 lowLatencyMode: true,
                 maxBufferLength: 25,
             });
-            hls.loadSource(stream);
+            hls.loadSource(finalStream);
             hls.attachMedia(video);
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -1485,10 +1530,12 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         closeQualityPanel();
         closeMenu(false);
         gamesOpen = true;
+        selectedGameIndex = 0;
         gamesPanel.classList.add('open');
         gamesPanel.setAttribute('aria-hidden', 'false');
         if (topHud) topHud.classList.remove('hidden');
         gamesList.innerHTML = '<li class="game-item"><div class="game-league">Carregando jogos...</div></li>';
+        gamesList.scrollTop = 0;
         fetchGamesToday();
         updateActiveGameItem();
     }
@@ -1529,18 +1576,18 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         if (qualityOpen) {
             if (!qualityOptions.length) {
-                if (isBack || key === 'ArrowRight' || key === 'ArrowLeft' || isEnter) {
+                if (isBack || isEnter) {
                     closeQualityPanel();
                 }
                 return;
             }
 
-            if (key === 'ArrowUp') {
+            if (key === 'ArrowUp' || key === 'ArrowLeft') {
                 qualityIndex = Math.max(0, qualityIndex - 1);
                 renderQualityPanel();
                 return;
             }
-            if (key === 'ArrowDown') {
+            if (key === 'ArrowDown' || key === 'ArrowRight') {
                 qualityIndex = Math.min(qualityOptions.length - 1, qualityIndex + 1);
                 renderQualityPanel();
                 return;
@@ -1549,7 +1596,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 applyQualitySelection();
                 return;
             }
-            if (isBack || key === 'ArrowRight' || key === 'ArrowLeft') {
+            if (isBack) {
                 closeQualityPanel();
                 return;
             }
