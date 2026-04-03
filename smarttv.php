@@ -59,17 +59,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             background: #000;
         }
 
-        #tv-iframe-player {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            border: 0;
-            background: #000;
-            display: none;
-            pointer-events: none;
-        }
-
         .top-hud {
             position: absolute;
             inset: 0 0 auto 0;
@@ -167,7 +156,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             grid-template-rows: auto 1fr;
             will-change: transform;
             contain: layout paint;
-            min-height: 0;
         }
 
         .games-panel.open { transform: translate3d(0, 0, 0); }
@@ -281,8 +269,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             display: grid;
             gap: 8px;
             contain: content;
-            -webkit-overflow-scrolling: touch;
-            min-height: 0;
         }
 
         .games-list::-webkit-scrollbar { width: 6px; }
@@ -290,13 +276,11 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         .game-item {
             border: 1px solid rgba(148, 163, 184, 0.2);
-            border-radius: 12px;
+            border-radius: 16px;
             background: rgba(8, 15, 35, 0.82);
-            padding: 12px;
+            padding: 0;
             display: grid;
-            gap: 10px;
-            color: #e2e8f0;
-            min-height: 190px;
+            gap: 0;
             overflow: hidden;
             transition: background-color 0.14s linear, border-color 0.14s linear, box-shadow 0.14s linear;
         }
@@ -311,8 +295,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             display: flex;
             align-items: center;
             justify-content: flex-start;
-            padding-bottom: 10px;
+            min-height: 54px;
+            padding: 0 14px;
             border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+            background: linear-gradient(90deg, rgba(7, 18, 44, 0.96), rgba(3, 12, 35, 0.92));
         }
 
         .game-head-title {
@@ -326,7 +312,9 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         .game-body {
             display: grid;
-            gap: 10px;
+            gap: 14px;
+            padding: 14px;
+            background: linear-gradient(180deg, rgba(2, 8, 26, 0.98), rgba(2, 8, 26, 0.88));
         }
 
         .game-badges {
@@ -358,12 +346,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             color: #86efac;
             border-color: rgba(34, 197, 94, 0.45);
             background: rgba(6, 78, 59, 0.34);
-        }
-
-        .game-badge.minute.idle {
-            color: #cbd5e1;
-            border-color: rgba(148,163,184,0.35);
-            background: rgba(51,65,85,0.34);
         }
 
         .game-teams-grid {
@@ -399,17 +381,17 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         .game-score-box {
             border: 1px solid rgba(148,163,184,0.28);
-            border-radius: 12px;
+            border-radius: 16px;
             background: rgba(30, 41, 59, 0.45);
-            min-width: 110px;
-            padding: 8px 10px;
+            min-width: 112px;
+            padding: 10px 12px;
             display: grid;
             justify-items: center;
             gap: 2px;
         }
 
         .game-score {
-            font-size: 34px;
+            font-size: 48px;
             font-weight: 700;
             line-height: 1;
             letter-spacing: 0.3px;
@@ -431,6 +413,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         .game-foot {
+            margin-top: 10px;
             border-top: 1px solid rgba(148,163,184,0.2);
             padding-top: 10px;
             display: flex;
@@ -563,65 +546,11 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         .toast.show { opacity: 1; }
-
-        .quality-panel {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            bottom: 14px;
-            width: min(92vw, 1280px);
-            z-index: 41;
-            border: 1px solid rgba(148,163,184,0.35);
-            border-radius: 14px;
-            background: rgba(2, 10, 30, 0.94);
-            padding: 12px;
-            display: none;
-            gap: 8px;
-            backdrop-filter: blur(6px);
-        }
-
-        .quality-panel.open {
-            display: grid;
-        }
-
-        .quality-title {
-            font-size: 18px;
-            color: #cbd5e1;
-            font-weight: 600;
-            padding: 2px 6px 8px;
-        }
-
-        #quality-list {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            overflow-x: auto;
-            padding-bottom: 2px;
-        }
-
-        .quality-item {
-            border: 1px solid rgba(148,163,184,0.3);
-            border-radius: 10px;
-            background: rgba(15,23,42,0.82);
-            color: #e2e8f0;
-            font-size: 20px;
-            font-weight: 600;
-            padding: 12px 18px;
-            min-width: 140px;
-            white-space: nowrap;
-        }
-
-        .quality-item.active {
-            border-color: #22c55e;
-            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.24);
-            color: #dcfce7;
-        }
     </style>
 </head>
 <body>
 <div class="screen">
     <video id="tv-player" autoplay playsinline muted></video>
-    <iframe id="tv-iframe-player" title="Smart TV Player" tabindex="-1" allow="autoplay; fullscreen"></iframe>
 
     <div class="top-hud">
         <div class="brand">
@@ -671,17 +600,11 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         </div>
     </div>
 
-    <div class="quality-panel" id="quality-panel" aria-hidden="true">
-        <div class="quality-title">Qualidade do canal</div>
-        <div id="quality-list"></div>
-    </div>
-
     <div class="toast" id="toast"></div>
 </div>
 
 <script>
     const CHANNELS_URL = 'proxy_embedtv.php?resource=channels';
-    const SOURCE70_URL = 'smarttv_70_proxy.php';
     const SCORES_URL = 'smarttv_scores_proxy.php';
     const SMARTTV_PAIR_API = 'smarttv_pair_api.php';
     const SMARTTV_TOKEN_KEY = 'eliteplay_smarttv_token';
@@ -694,10 +617,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     const topHud = document.querySelector('.top-hud');
     const hudName = document.getElementById('hud-channel-name');
     const video = document.getElementById('tv-player');
-    const iframePlayer = document.getElementById('tv-iframe-player');
     const toast = document.getElementById('toast');
-    const qualityPanel = document.getElementById('quality-panel');
-    const qualityList = document.getElementById('quality-list');
     const authOverlay = document.getElementById('auth-overlay');
     const authQr = document.getElementById('auth-qr');
     const authCode = document.getElementById('auth-code');
@@ -707,7 +627,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     let hls = null;
     let channels = [];
     let filteredChannels = [];
-    let hidden70SourceData = null;
     let gamesToday = [];
     let categories = [];
     let selectedCategory = 'ALL';
@@ -727,62 +646,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     let channelItemEls = [];
     let gameItemEls = [];
     let categoryBtnEls = [];
-    let currentPlayingChannel = null;
-    let currentPlayingUrl = '';
-    let qualityOptions = [];
-    let qualityIndex = 0;
-    let qualityOpen = false;
-    let iframeFocusGuard = null;
-    let iframeModeActive = false;
 
     const FIXED_CATEGORIES = ['TODOS', 'TELECINE', 'PREMIERE', 'SPORTV', 'ESPN', 'ESPORTES', 'HBO', 'BBB', 'ABERTOS'];
-
-    function isM3U8(url) {
-        return /\.m3u8(\?|$)/i.test(String(url || ''));
-    }
-
-    function shouldUseProxy(url) {
-        if (!url) return false;
-        const u = String(url);
-        if (u.includes('s27-usa-cloudfront-net.online')) return false;
-        return isM3U8(u);
-    }
-
-    function build70PlayerUrl(embedUrl, fallbackName = 'Canal') {
-        try {
-            const u = new URL(String(embedUrl || ''));
-            const host = u.hostname.toLowerCase();
-            if (!host.includes('embed.70noticias.com.br')) {
-                return String(embedUrl || '');
-            }
-
-            const withName = new URL(u.toString());
-            if (!withName.searchParams.get('n') && fallbackName) {
-                withName.searchParams.set('n', fallbackName);
-            }
-
-            return `smarttv_embed_relay.php?url=${encodeURIComponent(withName.toString())}`;
-        } catch (e) {
-            return String(embedUrl || '');
-        }
-    }
-
-    function startIframeFocusGuard() {
-        if (iframeFocusGuard) {
-            clearInterval(iframeFocusGuard);
-            iframeFocusGuard = null;
-        }
-        iframeFocusGuard = setInterval(() => {
-            try { window.focus(); } catch (e) {}
-        }, 1200);
-    }
-
-    function stopIframeFocusGuard() {
-        if (iframeFocusGuard) {
-            clearInterval(iframeFocusGuard);
-            iframeFocusGuard = null;
-        }
-    }
 
     function showTopHudTemporarily() {
         if (!topHud) return;
@@ -848,173 +713,12 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         showToast._timer = setTimeout(() => toast.classList.remove('show'), 1800);
     }
 
-    function buildQualityOptionsFromChannel(channel) {
-        if (!channel) return [];
-        const base = Array.isArray(channel.streams) ? channel.streams : [];
-        const dedup = [];
-        const seen = new Set();
-
-        base.forEach(stream => {
-            const url = String(stream?.url || '');
-            if (!url || seen.has(url)) return;
-            seen.add(url);
-            dedup.push({
-                label: String(stream?.name || 'Qualidade'),
-                url,
-            });
-        });
-
-        if (!dedup.length && channel.streamUrl) {
-            dedup.push({ label: 'EmbedTV', url: channel.streamUrl });
-        }
-
-        return sortQualityOptions(dedup);
-    }
-
-    function renderQualityPanel() {
-        if (!qualityList) return;
-
-        if (!qualityOptions.length) {
-            qualityList.innerHTML = '<div class="quality-item active">Auto</div>';
-            return;
-        }
-
-        qualityList.innerHTML = '';
-        qualityOptions.forEach((opt, idx) => {
-            const item = document.createElement('button');
-            item.type = 'button';
-            item.className = 'quality-item' + (idx === qualityIndex ? ' active' : '');
-            item.textContent = opt.label;
-            item.addEventListener('click', () => {
-                qualityIndex = idx;
-                applyQualitySelection();
-            });
-            qualityList.appendChild(item);
-        });
-    }
-
-    function openQualityPanel() {
-        if (!currentPlayingChannel || menuOpen || gamesOpen) return;
-
-        qualityOptions = buildQualityOptionsFromChannel(currentPlayingChannel);
-        qualityIndex = Math.max(0, qualityOptions.findIndex(opt => opt.url === currentPlayingUrl));
-        if (qualityIndex < 0) qualityIndex = 0;
-
-        qualityOpen = true;
-        qualityPanel.classList.add('open');
-        qualityPanel.setAttribute('aria-hidden', 'false');
-        renderQualityPanel();
-    }
-
-    function closeQualityPanel() {
-        qualityOpen = false;
-        qualityPanel.classList.remove('open');
-        qualityPanel.setAttribute('aria-hidden', 'true');
-    }
-
-    function applyQualitySelection() {
-        const selected = qualityOptions[qualityIndex];
-        if (!selected || !currentPlayingChannel) {
-            closeQualityPanel();
-            return;
-        }
-        playChannel(currentPlayingChannel, selected.url);
-        closeQualityPanel();
-        showToast(`Qualidade: ${selected.label}`);
-    }
-
     function normalizeText(value) {
         return String(value || '')
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase()
             .trim();
-    }
-
-    function normalizeChannelName(name) {
-        let n = String(name || '').toLowerCase().replace(/[\s\-]/g, '');
-
-        if (n.startsWith('bbb')) {
-            n = n.replace(/2[0-9]cam0?/g, '').replace(/2[0-9]mosaico/g, 'mosaico');
-        }
-
-        if (n.startsWith('hbomax')) {
-            n = n.replace('hbomax', 'max');
-        }
-
-        n = n.replace(/([a-z])0+([0-9]+)$/, '$1$2');
-
-        if (/premiereclubes|premiereserie/i.test(n)) {
-            n = 'premiere1';
-        }
-
-        if (/^(sportv|espn)1$/i.test(n)) {
-            n = n.replace(/1$/i, '');
-        }
-
-        return n;
-    }
-
-    function parse70Name(fullName) {
-        const original = String(fullName || '').trim();
-        const patterns = [/(?:FHD|HD|SD|4K|1080p|720p)/i, /\[LEG\]/i, /\(ALT\)/i, /\[ALT\]/i, /(?:\s|^)ALT(?:\s|$)/i, /(?:\s|^)\*(?:\s|$)/i];
-        let splitIndex = original.length;
-
-        for (const p of patterns) {
-            const idx = original.search(p);
-            if (idx > 0 && idx < splitIndex) splitIndex = idx;
-        }
-
-        const baseName = original.substring(0, splitIndex).trim();
-        const quality = original.substring(baseName.length).trim();
-        return { baseName: baseName || original, quality: quality || 'Principal' };
-    }
-
-    function merge70StreamsIntoEmbed(embedChannels, source70) {
-        const merged = Array.isArray(embedChannels) ? embedChannels.map(c => ({ ...c, streams: [...(c.streams || [])] })) : [];
-        const mapByNorm = new Map();
-        merged.forEach(c => {
-            mapByNorm.set(normalizeChannelName(c.name), c);
-            mapByNorm.set(normalizeChannelName(String(c.name).replace(/^sporto/i, 'sportv')), c);
-        });
-
-        if (!source70 || typeof source70 !== 'object') {
-            return merged;
-        }
-
-        Object.keys(source70).forEach(cat => {
-            const list = Array.isArray(source70[cat]) ? source70[cat] : [];
-            list.forEach(item => {
-                const parsed = parse70Name(item?.nome || '');
-                const norm = normalizeChannelName(parsed.baseName);
-                const target = mapByNorm.get(norm) || mapByNorm.get(normalizeChannelName(parsed.baseName.replace(/^sporto/i, 'sportv')));
-                const url = String(item?.link || '');
-                if (!target || !url) return;
-
-                if (!target.streams.some(s => s.url === url)) {
-                    target.streams.push({ name: parsed.quality, url, source: '70noticias' });
-                }
-
-                if (!target.logo && item?.capa) {
-                    target.logo = String(item.capa);
-                }
-            });
-        });
-
-        return merged;
-    }
-
-    function sortQualityOptions(options) {
-        const rank = (name) => {
-            const n = String(name || '').toUpperCase();
-            if (n.includes('4K')) return 1;
-            if (n.includes('FHD') || n.includes('1080')) return 2;
-            if (n.includes('HD') || n.includes('720')) return 3;
-            if (n.includes('SD') || n.includes('480')) return 4;
-            if (n.includes('EMBEDTV')) return 5;
-            return 6;
-        };
-        return [...options].sort((a, b) => rank(a.label) - rank(b.label));
     }
 
     function guessCategory(channel, categoryMap) {
@@ -1053,7 +757,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 category: guessCategory(item, categoryMap),
                 streamUrl,
                 fallbackUrl: fallback,
-                streams: [{ name: 'EmbedTV', url: streamUrl, source: 'embedtv' }],
             };
         }).filter(c => !!c.streamUrl);
     }
@@ -1374,10 +1077,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             const awayLogo = game.awayImg || game.image || 'imagens/elitelogo.webp';
 
             const statusLabel = String(game.statusText || game.status || 'AGENDADO').toUpperCase();
-            const minuteLabel = game.status === 'AO VIVO'
-                ? String(game.statusText || '').toUpperCase().trim() || 'AO VIVO'
-                : 'AGENDADO';
-            const minuteClass = game.status === 'AO VIVO' ? 'game-badge minute' : 'game-badge minute idle';
+            const minuteLabel = game.status === 'AO VIVO' ? (game.statusText || game.hourLabel) : game.hourLabel;
             const homeScore = game.homeScore !== '' ? game.homeScore : '0';
             const awayScore = game.awayScore !== '' ? game.awayScore : '0';
 
@@ -1387,7 +1087,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 </div>
                 <div class="game-body">
                     <div class="game-badges">
-                        <span class="${minuteClass}">${minuteLabel}</span>
+                        <span class="game-badge minute">${minuteLabel}</span>
                         <span class="game-badge ${game.status === 'AO VIVO' ? 'live' : ''}">${statusLabel}</span>
                     </div>
                     <div class="game-teams-grid">
@@ -1453,51 +1153,26 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     }
 
     function destroyPlayer() {
-        iframeModeActive = false;
-        stopIframeFocusGuard();
-
         if (hls) {
             hls.destroy();
             hls = null;
         }
-
-        iframePlayer.src = 'about:blank';
-        iframePlayer.style.display = 'none';
-        video.style.display = 'block';
-
         video.removeAttribute('src');
         video.load();
     }
 
-    async function playChannel(channel, preferredUrl = '') {
+    async function playChannel(channel) {
         if (!channel) return;
 
-        const stream = preferredUrl || channel.streamUrl;
-        currentPlayingChannel = channel;
-        currentPlayingUrl = stream;
+        const stream = channel.streamUrl;
         hudName.textContent = channel.name;
         showTopHudTemporarily();
 
         destroyPlayer();
 
-        if (!isM3U8(stream)) {
-            const iframeStream = build70PlayerUrl(stream, channel.name);
-            iframeModeActive = true;
-            video.style.display = 'none';
-            iframePlayer.style.display = 'block';
-            iframePlayer.src = iframeStream;
-            startIframeFocusGuard();
-            try { window.focus(); } catch (e) {}
-            return;
-        }
-
-        const finalStream = shouldUseProxy(stream)
-            ? `proxy.php?url=${encodeURIComponent(stream)}`
-            : stream;
-
         const canUseNative = video.canPlayType('application/vnd.apple.mpegurl');
         if (canUseNative) {
-            video.src = finalStream;
+            video.src = stream;
             video.muted = false;
             video.play().catch(() => {
                 video.muted = true;
@@ -1512,7 +1187,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 lowLatencyMode: true,
                 maxBufferLength: 25,
             });
-            hls.loadSource(finalStream);
+            hls.loadSource(stream);
             hls.attachMedia(video);
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -1539,7 +1214,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     }
 
     function openMenu() {
-        closeQualityPanel();
         closeGamesPanel(false);
         menuOpen = true;
         categoryOpen = true;
@@ -1585,16 +1259,11 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     }
 
     function openGamesPanel() {
-        closeQualityPanel();
         closeMenu(false);
         gamesOpen = true;
-        selectedGameIndex = 0;
         gamesPanel.classList.add('open');
         gamesPanel.setAttribute('aria-hidden', 'false');
         if (topHud) topHud.classList.remove('hidden');
-        gamesList.innerHTML = '<li class="game-item"><div class="game-league">Carregando jogos...</div></li>';
-        gamesList.scrollTop = 0;
-        fetchGamesToday();
         updateActiveGameItem();
     }
 
@@ -1617,10 +1286,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         const key = event.key;
         const keyCode = event.keyCode || 0;
 
-        if (iframeModeActive) {
-            try { window.focus(); } catch (e) {}
-        }
-
         const isBack = key === 'Backspace' || key === 'Escape' || key === 'BrowserBack' || key === 'GoBack' || keyCode === 8 || keyCode === 27 || keyCode === 166 || keyCode === 10009 || keyCode === 461;
         const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key);
         const isEnter = key === 'Enter' || keyCode === 13;
@@ -1634,34 +1299,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 showToast('Autorize pelo celular para liberar o player');
             }
             return;
-        }
-
-        if (qualityOpen) {
-            if (!qualityOptions.length) {
-                if (isBack || isEnter) {
-                    closeQualityPanel();
-                }
-                return;
-            }
-
-            if (key === 'ArrowUp' || key === 'ArrowLeft') {
-                qualityIndex = Math.max(0, qualityIndex - 1);
-                renderQualityPanel();
-                return;
-            }
-            if (key === 'ArrowDown' || key === 'ArrowRight') {
-                qualityIndex = Math.min(qualityOptions.length - 1, qualityIndex + 1);
-                renderQualityPanel();
-                return;
-            }
-            if (isEnter) {
-                applyQualitySelection();
-                return;
-            }
-            if (isBack) {
-                closeQualityPanel();
-                return;
-            }
         }
 
         if (isBack) {
@@ -1721,8 +1358,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         if (!menuOpen && !gamesOpen) {
-            if (key === 'ArrowDown') {
-                openQualityPanel();
+            if (isBack) {
+                showToast('Pressione ArrowLeft para abrir canais');
             }
             return;
         }
@@ -1773,16 +1410,12 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             const response = await fetch(`proxy_embedtv.php?resource=jogos&_t=${Date.now()}`, { cache: 'no-store' });
             const payload = await response.json();
             gamesToday = mapGames(payload);
+            const liveScores = await fetchLiveScores();
+            applyLiveScoresToGames(liveScores);
             if (selectedGameIndex >= gamesToday.length) {
                 selectedGameIndex = Math.max(0, gamesToday.length - 1);
             }
             renderGamesList();
-
-            // Atualiza placar em segundo plano para não travar a abertura do menu
-            fetchLiveScores().then((liveScores) => {
-                applyLiveScoresToGames(liveScores);
-                renderGamesList();
-            }).catch(() => null);
         } catch (error) {
             gamesToday = [];
             renderGamesList();
@@ -1801,17 +1434,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
     async function loadChannelsExperience() {
         try {
-            const [embedPayload, source70Payload] = await Promise.all([
-                fetch(`${CHANNELS_URL}&_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null),
-                fetch(`${SOURCE70_URL}?_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null),
-            ]);
+            const response = await fetch(`${CHANNELS_URL}&_t=${Date.now()}`, { cache: 'no-store' });
+            const payload = await response.json();
 
-            if (!embedPayload) {
-                throw new Error('Sem payload de canais EmbedTV');
-            }
-
-            hidden70SourceData = source70Payload;
-            channels = merge70StreamsIntoEmbed(mapChannels(embedPayload), hidden70SourceData);
+            channels = mapChannels(payload);
             categories = [...FIXED_CATEGORIES];
             if (!categories.includes(selectedCategory)) {
                 selectedCategory = categories[0] || 'TODOS';
