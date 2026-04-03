@@ -122,7 +122,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             left: 0;
             bottom: 0;
             width: 182px;
-            z-index: 30;
+            z-index: 32;
             transform: translate3d(-102%, 0, 0);
             transition: transform 0.16s ease-out;
             background: #030c23;
@@ -157,6 +157,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         .games-panel.open { transform: translate3d(0, 0, 0); }
 
         .menu-panel.open { transform: translate3d(0, 0, 0); }
+        .menu-panel.open.with-category { transform: translate3d(182px, 0, 0); }
 
         .menu-head {
             padding: 18px 18px 12px;
