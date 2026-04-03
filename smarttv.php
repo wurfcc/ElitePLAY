@@ -546,6 +546,50 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         .toast.show { opacity: 1; }
+
+        .quality-panel {
+            position: absolute;
+            right: 20px;
+            bottom: 20px;
+            width: min(360px, 42vw);
+            max-height: 58vh;
+            overflow: auto;
+            z-index: 41;
+            border: 1px solid rgba(148,163,184,0.35);
+            border-radius: 14px;
+            background: rgba(2, 10, 30, 0.94);
+            padding: 10px;
+            display: none;
+            gap: 8px;
+            backdrop-filter: blur(6px);
+        }
+
+        .quality-panel.open {
+            display: grid;
+        }
+
+        .quality-title {
+            font-size: 13px;
+            color: #cbd5e1;
+            font-weight: 600;
+            padding: 2px 4px 6px;
+        }
+
+        .quality-item {
+            border: 1px solid rgba(148,163,184,0.3);
+            border-radius: 10px;
+            background: rgba(15,23,42,0.82);
+            color: #e2e8f0;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 10px 12px;
+        }
+
+        .quality-item.active {
+            border-color: #22c55e;
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.24);
+            color: #dcfce7;
+        }
     </style>
 </head>
 <body>
@@ -600,11 +644,17 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         </div>
     </div>
 
+    <div class="quality-panel" id="quality-panel" aria-hidden="true">
+        <div class="quality-title">Qualidade do canal</div>
+        <div id="quality-list"></div>
+    </div>
+
     <div class="toast" id="toast"></div>
 </div>
 
 <script>
     const CHANNELS_URL = 'proxy_embedtv.php?resource=channels';
+    const SOURCE70_URL = 'smarttv_70_proxy.php';
     const SCORES_URL = 'smarttv_scores_proxy.php';
     const SMARTTV_PAIR_API = 'smarttv_pair_api.php';
     const SMARTTV_TOKEN_KEY = 'eliteplay_smarttv_token';
@@ -618,6 +668,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     const hudName = document.getElementById('hud-channel-name');
     const video = document.getElementById('tv-player');
     const toast = document.getElementById('toast');
+    const qualityPanel = document.getElementById('quality-panel');
+    const qualityList = document.getElementById('quality-list');
     const authOverlay = document.getElementById('auth-overlay');
     const authQr = document.getElementById('auth-qr');
     const authCode = document.getElementById('auth-code');
@@ -627,6 +679,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     let hls = null;
     let channels = [];
     let filteredChannels = [];
+    let hidden70SourceData = null;
     let gamesToday = [];
     let categories = [];
     let selectedCategory = 'ALL';
@@ -646,6 +699,11 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     let channelItemEls = [];
     let gameItemEls = [];
     let categoryBtnEls = [];
+    let currentPlayingChannel = null;
+    let currentPlayingUrl = '';
+    let qualityOptions = [];
+    let qualityIndex = 0;
+    let qualityOpen = false;
 
     const FIXED_CATEGORIES = ['TODOS', 'TELECINE', 'PREMIERE', 'SPORTV', 'ESPN', 'ESPORTES', 'HBO', 'BBB', 'ABERTOS'];
 
@@ -713,12 +771,173 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         showToast._timer = setTimeout(() => toast.classList.remove('show'), 1800);
     }
 
+    function buildQualityOptionsFromChannel(channel) {
+        if (!channel) return [];
+        const base = Array.isArray(channel.streams) ? channel.streams : [];
+        const dedup = [];
+        const seen = new Set();
+
+        base.forEach(stream => {
+            const url = String(stream?.url || '');
+            if (!url || seen.has(url)) return;
+            seen.add(url);
+            dedup.push({
+                label: String(stream?.name || 'Qualidade'),
+                url,
+            });
+        });
+
+        if (!dedup.length && channel.streamUrl) {
+            dedup.push({ label: 'EmbedTV', url: channel.streamUrl });
+        }
+
+        return sortQualityOptions(dedup);
+    }
+
+    function renderQualityPanel() {
+        if (!qualityList) return;
+
+        if (!qualityOptions.length) {
+            qualityList.innerHTML = '<div class="quality-item active">Auto</div>';
+            return;
+        }
+
+        qualityList.innerHTML = '';
+        qualityOptions.forEach((opt, idx) => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'quality-item' + (idx === qualityIndex ? ' active' : '');
+            item.textContent = opt.label;
+            item.addEventListener('click', () => {
+                qualityIndex = idx;
+                applyQualitySelection();
+            });
+            qualityList.appendChild(item);
+        });
+    }
+
+    function openQualityPanel() {
+        if (!currentPlayingChannel || menuOpen || gamesOpen) return;
+
+        qualityOptions = buildQualityOptionsFromChannel(currentPlayingChannel);
+        qualityIndex = Math.max(0, qualityOptions.findIndex(opt => opt.url === currentPlayingUrl));
+        if (qualityIndex < 0) qualityIndex = 0;
+
+        qualityOpen = true;
+        qualityPanel.classList.add('open');
+        qualityPanel.setAttribute('aria-hidden', 'false');
+        renderQualityPanel();
+    }
+
+    function closeQualityPanel() {
+        qualityOpen = false;
+        qualityPanel.classList.remove('open');
+        qualityPanel.setAttribute('aria-hidden', 'true');
+    }
+
+    function applyQualitySelection() {
+        const selected = qualityOptions[qualityIndex];
+        if (!selected || !currentPlayingChannel) {
+            closeQualityPanel();
+            return;
+        }
+        playChannel(currentPlayingChannel, selected.url);
+        closeQualityPanel();
+        showToast(`Qualidade: ${selected.label}`);
+    }
+
     function normalizeText(value) {
         return String(value || '')
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase()
             .trim();
+    }
+
+    function normalizeChannelName(name) {
+        let n = String(name || '').toLowerCase().replace(/[\s\-]/g, '');
+
+        if (n.startsWith('bbb')) {
+            n = n.replace(/2[0-9]cam0?/g, '').replace(/2[0-9]mosaico/g, 'mosaico');
+        }
+
+        if (n.startsWith('hbomax')) {
+            n = n.replace('hbomax', 'max');
+        }
+
+        n = n.replace(/([a-z])0+([0-9]+)$/, '$1$2');
+
+        if (/premiereclubes|premiereserie/i.test(n)) {
+            n = 'premiere1';
+        }
+
+        if (/^(sportv|espn)1$/i.test(n)) {
+            n = n.replace(/1$/i, '');
+        }
+
+        return n;
+    }
+
+    function parse70Name(fullName) {
+        const original = String(fullName || '').trim();
+        const patterns = [/(?:FHD|HD|SD|4K|1080p|720p)/i, /\[LEG\]/i, /\(ALT\)/i, /\[ALT\]/i, /(?:\s|^)ALT(?:\s|$)/i, /(?:\s|^)\*(?:\s|$)/i];
+        let splitIndex = original.length;
+
+        for (const p of patterns) {
+            const idx = original.search(p);
+            if (idx > 0 && idx < splitIndex) splitIndex = idx;
+        }
+
+        const baseName = original.substring(0, splitIndex).trim();
+        const quality = original.substring(baseName.length).trim();
+        return { baseName: baseName || original, quality: quality || 'Principal' };
+    }
+
+    function merge70StreamsIntoEmbed(embedChannels, source70) {
+        const merged = Array.isArray(embedChannels) ? embedChannels.map(c => ({ ...c, streams: [...(c.streams || [])] })) : [];
+        const mapByNorm = new Map();
+        merged.forEach(c => {
+            mapByNorm.set(normalizeChannelName(c.name), c);
+            mapByNorm.set(normalizeChannelName(String(c.name).replace(/^sporto/i, 'sportv')), c);
+        });
+
+        if (!source70 || typeof source70 !== 'object') {
+            return merged;
+        }
+
+        Object.keys(source70).forEach(cat => {
+            const list = Array.isArray(source70[cat]) ? source70[cat] : [];
+            list.forEach(item => {
+                const parsed = parse70Name(item?.nome || '');
+                const norm = normalizeChannelName(parsed.baseName);
+                const target = mapByNorm.get(norm) || mapByNorm.get(normalizeChannelName(parsed.baseName.replace(/^sporto/i, 'sportv')));
+                const url = String(item?.link || '');
+                if (!target || !url) return;
+
+                if (!target.streams.some(s => s.url === url)) {
+                    target.streams.push({ name: parsed.quality, url, source: '70noticias' });
+                }
+
+                if (!target.logo && item?.capa) {
+                    target.logo = String(item.capa);
+                }
+            });
+        });
+
+        return merged;
+    }
+
+    function sortQualityOptions(options) {
+        const rank = (name) => {
+            const n = String(name || '').toUpperCase();
+            if (n.includes('4K')) return 1;
+            if (n.includes('FHD') || n.includes('1080')) return 2;
+            if (n.includes('HD') || n.includes('720')) return 3;
+            if (n.includes('SD') || n.includes('480')) return 4;
+            if (n.includes('EMBEDTV')) return 5;
+            return 6;
+        };
+        return [...options].sort((a, b) => rank(a.label) - rank(b.label));
     }
 
     function guessCategory(channel, categoryMap) {
@@ -757,6 +976,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 category: guessCategory(item, categoryMap),
                 streamUrl,
                 fallbackUrl: fallback,
+                streams: [{ name: 'EmbedTV', url: streamUrl, source: 'embedtv' }],
             };
         }).filter(c => !!c.streamUrl);
     }
@@ -1161,10 +1381,12 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         video.load();
     }
 
-    async function playChannel(channel) {
+    async function playChannel(channel, preferredUrl = '') {
         if (!channel) return;
 
-        const stream = channel.streamUrl;
+        const stream = preferredUrl || channel.streamUrl;
+        currentPlayingChannel = channel;
+        currentPlayingUrl = stream;
         hudName.textContent = channel.name;
         showTopHudTemporarily();
 
@@ -1214,6 +1436,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     }
 
     function openMenu() {
+        closeQualityPanel();
         closeGamesPanel(false);
         menuOpen = true;
         categoryOpen = true;
@@ -1259,11 +1482,14 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     }
 
     function openGamesPanel() {
+        closeQualityPanel();
         closeMenu(false);
         gamesOpen = true;
         gamesPanel.classList.add('open');
         gamesPanel.setAttribute('aria-hidden', 'false');
         if (topHud) topHud.classList.remove('hidden');
+        gamesList.innerHTML = '<li class="game-item"><div class="game-league">Carregando jogos...</div></li>';
+        fetchGamesToday();
         updateActiveGameItem();
     }
 
@@ -1299,6 +1525,34 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 showToast('Autorize pelo celular para liberar o player');
             }
             return;
+        }
+
+        if (qualityOpen) {
+            if (!qualityOptions.length) {
+                if (isBack || key === 'ArrowRight' || key === 'ArrowLeft' || isEnter) {
+                    closeQualityPanel();
+                }
+                return;
+            }
+
+            if (key === 'ArrowUp') {
+                qualityIndex = Math.max(0, qualityIndex - 1);
+                renderQualityPanel();
+                return;
+            }
+            if (key === 'ArrowDown') {
+                qualityIndex = Math.min(qualityOptions.length - 1, qualityIndex + 1);
+                renderQualityPanel();
+                return;
+            }
+            if (isEnter) {
+                applyQualitySelection();
+                return;
+            }
+            if (isBack || key === 'ArrowRight' || key === 'ArrowLeft') {
+                closeQualityPanel();
+                return;
+            }
         }
 
         if (isBack) {
@@ -1358,8 +1612,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         if (!menuOpen && !gamesOpen) {
-            if (isBack) {
-                showToast('Pressione ArrowLeft para abrir canais');
+            if (key === 'ArrowDown') {
+                openQualityPanel();
             }
             return;
         }
@@ -1410,12 +1664,16 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             const response = await fetch(`proxy_embedtv.php?resource=jogos&_t=${Date.now()}`, { cache: 'no-store' });
             const payload = await response.json();
             gamesToday = mapGames(payload);
-            const liveScores = await fetchLiveScores();
-            applyLiveScoresToGames(liveScores);
             if (selectedGameIndex >= gamesToday.length) {
                 selectedGameIndex = Math.max(0, gamesToday.length - 1);
             }
             renderGamesList();
+
+            // Atualiza placar em segundo plano para não travar a abertura do menu
+            fetchLiveScores().then((liveScores) => {
+                applyLiveScoresToGames(liveScores);
+                renderGamesList();
+            }).catch(() => null);
         } catch (error) {
             gamesToday = [];
             renderGamesList();
@@ -1434,10 +1692,17 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
     async function loadChannelsExperience() {
         try {
-            const response = await fetch(`${CHANNELS_URL}&_t=${Date.now()}`, { cache: 'no-store' });
-            const payload = await response.json();
+            const [embedPayload, source70Payload] = await Promise.all([
+                fetch(`${CHANNELS_URL}&_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+                fetch(`${SOURCE70_URL}?_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+            ]);
 
-            channels = mapChannels(payload);
+            if (!embedPayload) {
+                throw new Error('Sem payload de canais EmbedTV');
+            }
+
+            hidden70SourceData = source70Payload;
+            channels = merge70StreamsIntoEmbed(mapChannels(embedPayload), hidden70SourceData);
             categories = [...FIXED_CATEGORIES];
             if (!categories.includes(selectedCategory)) {
                 selectedCategory = categories[0] || 'TODOS';
