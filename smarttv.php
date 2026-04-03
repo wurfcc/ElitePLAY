@@ -67,6 +67,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             border: 0;
             background: #000;
             display: none;
+            pointer-events: none;
         }
 
         .top-hud {
@@ -166,6 +167,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             grid-template-rows: auto 1fr;
             will-change: transform;
             contain: layout paint;
+            min-height: 0;
         }
 
         .games-panel.open { transform: translate3d(0, 0, 0); }
@@ -280,6 +282,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             gap: 8px;
             contain: content;
             -webkit-overflow-scrolling: touch;
+            min-height: 0;
         }
 
         .games-list::-webkit-scrollbar { width: 6px; }
@@ -294,6 +297,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             gap: 10px;
             color: #e2e8f0;
             min-height: 190px;
+            overflow: hidden;
             transition: background-color 0.14s linear, border-color 0.14s linear, box-shadow 0.14s linear;
         }
 
@@ -354,6 +358,12 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             color: #86efac;
             border-color: rgba(34, 197, 94, 0.45);
             background: rgba(6, 78, 59, 0.34);
+        }
+
+        .game-badge.minute.idle {
+            color: #cbd5e1;
+            border-color: rgba(148,163,184,0.35);
+            background: rgba(51,65,85,0.34);
         }
 
         .game-teams-grid {
@@ -734,6 +744,36 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         const u = String(url);
         if (u.includes('s27-usa-cloudfront-net.online')) return false;
         return isM3U8(u);
+    }
+
+    function toBase64Utf8(value) {
+        try {
+            return btoa(unescape(encodeURIComponent(String(value || ''))));
+        } catch (e) {
+            return btoa(String(value || ''));
+        }
+    }
+
+    function build70PlayerUrl(embedUrl, fallbackName = 'Canal') {
+        try {
+            const u = new URL(String(embedUrl || ''));
+            const host = u.hostname.toLowerCase();
+            if (!host.includes('embed.70noticias.com.br')) {
+                return String(embedUrl || '');
+            }
+
+            const id = u.searchParams.get('v');
+            if (!id) {
+                return String(embedUrl || '');
+            }
+
+            const nameRaw = u.searchParams.get('n') || fallbackName;
+            const img = u.searchParams.get('i') || '';
+            const nameB64 = toBase64Utf8(nameRaw);
+            return `https://embed.70noticias.com.br/player.php?type=live_streams&id=${encodeURIComponent(id)}&ext=m3u8&name=${encodeURIComponent(nameB64)}&img=${encodeURIComponent(img)}`;
+        } catch (e) {
+            return String(embedUrl || '');
+        }
     }
 
     function showTopHudTemporarily() {
@@ -1326,7 +1366,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             const awayLogo = game.awayImg || game.image || 'imagens/elitelogo.webp';
 
             const statusLabel = String(game.statusText || game.status || 'AGENDADO').toUpperCase();
-            const minuteLabel = game.status === 'AO VIVO' ? (game.statusText || game.hourLabel) : game.hourLabel;
+            const minuteLabel = game.status === 'AO VIVO'
+                ? String(game.statusText || '').toUpperCase().trim() || 'AO VIVO'
+                : 'AGENDADO';
+            const minuteClass = game.status === 'AO VIVO' ? 'game-badge minute' : 'game-badge minute idle';
             const homeScore = game.homeScore !== '' ? game.homeScore : '0';
             const awayScore = game.awayScore !== '' ? game.awayScore : '0';
 
@@ -1336,7 +1379,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 </div>
                 <div class="game-body">
                     <div class="game-badges">
-                        <span class="game-badge minute">${minuteLabel}</span>
+                        <span class="${minuteClass}">${minuteLabel}</span>
                         <span class="game-badge ${game.status === 'AO VIVO' ? 'live' : ''}">${statusLabel}</span>
                     </div>
                     <div class="game-teams-grid">
@@ -1427,9 +1470,11 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         destroyPlayer();
 
         if (!isM3U8(stream)) {
+            const iframeStream = build70PlayerUrl(stream, channel.name);
             video.style.display = 'none';
             iframePlayer.style.display = 'block';
-            iframePlayer.src = stream;
+            iframePlayer.src = iframeStream;
+            try { window.focus(); } catch (e) {}
             return;
         }
 
