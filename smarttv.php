@@ -621,7 +621,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 <body>
 <div class="screen">
     <video id="tv-player" autoplay playsinline muted></video>
-    <iframe id="tv-iframe-player" title="Smart TV Player"></iframe>
+    <iframe id="tv-iframe-player" title="Smart TV Player" tabindex="-1" allow="autoplay; fullscreen"></iframe>
 
     <div class="top-hud">
         <div class="brand">
@@ -732,6 +732,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     let qualityOptions = [];
     let qualityIndex = 0;
     let qualityOpen = false;
+    let iframeFocusGuard = null;
+    let iframeModeActive = false;
 
     const FIXED_CATEGORIES = ['TODOS', 'TELECINE', 'PREMIERE', 'SPORTV', 'ESPN', 'ESPORTES', 'HBO', 'BBB', 'ABERTOS'];
 
@@ -770,9 +772,26 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             const nameRaw = u.searchParams.get('n') || fallbackName;
             const img = u.searchParams.get('i') || '';
             const nameB64 = toBase64Utf8(nameRaw);
-            return `https://embed.70noticias.com.br/player.php?type=live_streams&id=${encodeURIComponent(id)}&ext=m3u8&name=${encodeURIComponent(nameB64)}&img=${encodeURIComponent(img)}`;
+            return `https://embed.70noticias.com.br/player.php?type=live_streams&id=${encodeURIComponent(id)}&ext=m3u8&name=${encodeURIComponent(nameB64)}&img=${encodeURIComponent(img)}&autoplay=1&autoPlay=1&play=1&start=1&muted=1`;
         } catch (e) {
             return String(embedUrl || '');
+        }
+    }
+
+    function startIframeFocusGuard() {
+        if (iframeFocusGuard) {
+            clearInterval(iframeFocusGuard);
+            iframeFocusGuard = null;
+        }
+        iframeFocusGuard = setInterval(() => {
+            try { window.focus(); } catch (e) {}
+        }, 1200);
+    }
+
+    function stopIframeFocusGuard() {
+        if (iframeFocusGuard) {
+            clearInterval(iframeFocusGuard);
+            iframeFocusGuard = null;
         }
     }
 
@@ -1445,6 +1464,9 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     }
 
     function destroyPlayer() {
+        iframeModeActive = false;
+        stopIframeFocusGuard();
+
         if (hls) {
             hls.destroy();
             hls = null;
@@ -1471,9 +1493,11 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         if (!isM3U8(stream)) {
             const iframeStream = build70PlayerUrl(stream, channel.name);
+            iframeModeActive = true;
             video.style.display = 'none';
             iframePlayer.style.display = 'block';
             iframePlayer.src = iframeStream;
+            startIframeFocusGuard();
             try { window.focus(); } catch (e) {}
             return;
         }
@@ -1603,6 +1627,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     function handleRemoteNavigation(event) {
         const key = event.key;
         const keyCode = event.keyCode || 0;
+
+        if (iframeModeActive) {
+            try { window.focus(); } catch (e) {}
+        }
 
         const isBack = key === 'Backspace' || key === 'Escape' || key === 'BrowserBack' || key === 'GoBack' || keyCode === 8 || keyCode === 27 || keyCode === 166 || keyCode === 10009 || keyCode === 461;
         const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key);
