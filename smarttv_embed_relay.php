@@ -75,6 +75,27 @@ if (stripos($ctype, 'text/html') === false && stripos($html, '<html') === false)
     exit;
 }
 
+// Auto-avanca no fluxo da 70 (index -> player) no servidor,
+// evitando depender de clique/script no iframe da TV.
+$requestedPath = strtolower((string)($parts['path'] ?? ''));
+if (strpos($requestedPath, 'index.php') !== false) {
+    if (preg_match('/href="([^"]*player\.php[^"]*)"/i', $html, $m)) {
+        $next = trim((string)$m[1]);
+        if ($next !== '') {
+            if (stripos($next, 'http://') !== 0 && stripos($next, 'https://') !== 0) {
+                $next = $origin . '/' . ltrim($next, '/');
+            }
+            $selfPath = rtrim(str_replace('\\', '/', dirname((string)($_SERVER['SCRIPT_NAME'] ?? '/'))), '/');
+            if ($selfPath === '' || $selfPath === '.') {
+                $selfPath = '';
+            }
+            $redirectTo = $selfPath . '/smarttv_embed_relay.php?url=' . rawurlencode($next);
+            header('Location: ' . $redirectTo);
+            exit;
+        }
+    }
+}
+
 $relayPath = rtrim(str_replace('\\', '/', dirname((string)($_SERVER['SCRIPT_NAME'] ?? '/'))), '/');
 if ($relayPath === '' || $relayPath === '.') {
     $relayPath = '';
