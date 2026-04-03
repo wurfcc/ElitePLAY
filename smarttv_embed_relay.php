@@ -75,6 +75,23 @@ if (stripos($ctype, 'text/html') === false && stripos($html, '<html') === false)
     exit;
 }
 
+// Corrige URL relativa do stream (SC) para absoluta no domínio da 70,
+// evitando que o player tente carregar '?play=...' no domínio local.
+if (preg_match('/SC=atob\("([^"]+)"\)/', $html, $mSc)) {
+    $b64 = (string)$mSc[1];
+    $decoded = base64_decode($b64, true);
+    if (is_string($decoded) && $decoded !== '') {
+        $sc = trim($decoded);
+        if ($sc !== '' && ($sc[0] === '?' || $sc[0] === '/')) {
+            $absolute = $sc[0] === '?'
+                ? ($origin . '/' . $sc)
+                : ($origin . '/' . ltrim($sc, '/'));
+            $newB64 = base64_encode($absolute);
+            $html = preg_replace('/SC=atob\("[^"]+"\)/', 'SC=atob("' . $newB64 . '")', $html, 1);
+        }
+    }
+}
+
 // Auto-avanca no fluxo da 70 (index -> player) no servidor,
 // evitando depender de clique/script no iframe da TV.
 $requestedPath = strtolower((string)($parts['path'] ?? ''));
