@@ -26,6 +26,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         * { box-sizing: border-box; }
 
+        * {
+            font-family: 'Outfit', 'Segoe UI', sans-serif;
+        }
+
         html, body {
             width: 100%;
             height: 100%;
@@ -102,7 +106,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             top: 0;
             left: 0;
             bottom: 0;
-            width: min(42vw, 540px);
+            width: min(42vw, 480px);
             z-index: 31;
             transform: translate3d(-102%, 0, 0);
             transition: transform 0.16s ease-out;
@@ -128,7 +132,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             background: #030c23;
             border-right: 1px solid var(--line);
             display: grid;
-            grid-template-rows: auto 1fr auto;
+            grid-template-rows: auto 1fr;
             will-change: transform;
             contain: layout paint;
         }
@@ -149,7 +153,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             background: var(--panel-strong);
             border-right: 1px solid var(--line);
             display: grid;
-            grid-template-rows: auto 1fr auto;
+            grid-template-rows: auto 1fr;
             will-change: transform;
             contain: layout paint;
         }
@@ -197,7 +201,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             padding: 10px 8px;
             white-space: normal;
             text-align: center;
-            font-size: 13px;
+            font-size: 16px;
             font-weight: 600;
         }
 
@@ -257,16 +261,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
         }
 
-        .menu-foot {
-            border-top: 1px solid var(--line);
-            padding: 12px 16px;
-            color: #cbd5e1;
-            font-size: 12px;
-            display: flex;
-            gap: 14px;
-            flex-wrap: wrap;
-        }
-
         .games-list {
             margin: 0;
             padding: 10px;
@@ -282,11 +276,12 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
         .game-item {
             border: 1px solid rgba(148, 163, 184, 0.2);
-            border-radius: 12px;
+            border-radius: 16px;
             background: rgba(8, 15, 35, 0.82);
-            padding: 12px;
+            padding: 0;
             display: grid;
-            gap: 10px;
+            gap: 0;
+            overflow: hidden;
             transition: background-color 0.14s linear, border-color 0.14s linear, box-shadow 0.14s linear;
         }
 
@@ -296,26 +291,68 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
         }
 
-        .game-top {
+        .game-head {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 54px;
+            padding: 0 14px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+            background: linear-gradient(90deg, rgba(7, 18, 44, 0.96), rgba(3, 12, 35, 0.92));
+        }
+
+        .game-head-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #f8fafc;
+            line-height: 1.2;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        .game-body {
+            display: grid;
+            gap: 14px;
+            padding: 14px;
+            background: linear-gradient(180deg, rgba(2, 8, 26, 0.98), rgba(2, 8, 26, 0.88));
+        }
+
+        .game-badges {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 8px;
+            gap: 10px;
         }
 
-        .game-time {
-            font-size: 15px;
-            font-weight: 700;
-            color: #e2e8f0;
-        }
-
-        .game-status {
+        .game-badge {
             font-size: 11px;
             text-transform: uppercase;
-            color: #7dd3fc;
-            border: 1px solid rgba(125, 211, 252, 0.35);
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            color: #f8fafc;
+            border: 1px solid rgba(148,163,184,0.35);
             border-radius: 999px;
             padding: 3px 8px;
+            white-space: nowrap;
+        }
+
+        .game-badge.live {
+            color: #fecaca;
+            border-color: rgba(239, 68, 68, 0.5);
+            background: rgba(185, 28, 28, 0.35);
+        }
+
+        .game-badge.minute {
+            color: #86efac;
+            border-color: rgba(34, 197, 94, 0.45);
+            background: rgba(6, 78, 59, 0.34);
+        }
+
+        .game-teams-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 12px;
         }
 
         .game-league {
@@ -324,67 +361,101 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             line-height: 1.2;
         }
 
-        .game-teams {
+        .game-team-col {
             display: grid;
-            gap: 8px;
-        }
-
-        .game-team {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            justify-items: center;
+            gap: 6px;
             min-width: 0;
         }
 
-        .game-team .team-name {
-            font-size: 14px;
-            font-weight: 600;
+        .game-team-name {
+            font-size: 15px;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.15;
+            max-width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .game-team .team-score {
-            margin-left: auto;
-            font-size: 14px;
-            font-weight: 700;
-            color: #f8fafc;
-            min-width: 14px;
-            text-align: right;
+        .game-score-box {
+            border: 1px solid rgba(148,163,184,0.28);
+            border-radius: 16px;
+            background: rgba(30, 41, 59, 0.45);
+            min-width: 112px;
+            padding: 10px 12px;
+            display: grid;
+            justify-items: center;
+            gap: 2px;
         }
 
-        .game-team img {
-            width: 28px;
-            height: 28px;
+        .game-score {
+            font-size: 48px;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: 0.3px;
+        }
+
+        .game-score-box small {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: block;
+        }
+
+        .game-team-col img {
+            width: 50px;
+            height: 50px;
             object-fit: contain;
             pointer-events: none;
-            flex-shrink: 0;
         }
 
-        .hint-pill {
-            padding: 4px 8px;
-            border-radius: 999px;
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            background: rgba(30, 41, 59, 0.7);
+        .game-foot {
+            margin-top: 10px;
+            border-top: 1px solid rgba(148,163,184,0.2);
+            padding-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+        }
+
+        .game-foot .date {
+            font-size: 12px;
+            color: #94a3b8;
+            letter-spacing: 0.4px;
+        }
+
+        .game-foot .time {
+            font-size: 14px;
+            font-weight: 700;
+            color: #e2e8f0;
         }
 
         .auth-overlay {
-            position: absolute;
-            inset: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             z-index: 45;
             display: none;
-            align-items: center;
-            justify-content: center;
             background: rgba(2, 6, 23, 0.78);
             backdrop-filter: blur(3px);
         }
 
         .auth-overlay.show {
-            display: flex;
+            display: block;
         }
 
         .auth-card {
             width: min(760px, 90vw);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             border: 1px solid rgba(56, 189, 248, 0.42);
             border-radius: 18px;
             background: linear-gradient(145deg, rgba(7, 19, 44, 0.97), rgba(3, 11, 28, 0.94));
@@ -496,12 +567,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             <p>Setas para navegar, Enter para assistir</p>
         </div>
         <ul class="channel-list" id="channel-list"></ul>
-        <div class="menu-foot">
-            <span class="hint-pill">LEFT: foco categorias</span>
-            <span class="hint-pill">UP/DOWN: navegar</span>
-            <span class="hint-pill">ENTER: reproduzir</span>
-            <span class="hint-pill">RIGHT: fechar/foco</span>
-        </div>
     </aside>
 
     <aside class="category-panel" id="category-panel" aria-hidden="true">
@@ -510,12 +575,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             <p>Setas para escolher</p>
         </div>
         <ul class="category-list" id="category-list"></ul>
-        <div class="menu-foot">
-            <span class="hint-pill">UP/DOWN: navegar</span>
-            <span class="hint-pill">ENTER: filtrar</span>
-            <span class="hint-pill">LEFT: abrir jogos</span>
-            <span class="hint-pill">RIGHT/BACK: voltar</span>
-        </div>
     </aside>
 
     <aside class="games-panel" id="games-panel" aria-hidden="true">
@@ -524,12 +583,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             <p>Setas para navegar, Enter para assistir</p>
         </div>
         <ul class="games-list" id="games-list"></ul>
-        <div class="menu-foot">
-            <span class="hint-pill">LEFT: navegar jogos</span>
-            <span class="hint-pill">UP/DOWN: navegar</span>
-            <span class="hint-pill">ENTER: abrir jogo</span>
-            <span class="hint-pill">RIGHT/BACK: voltar</span>
-        </div>
     </aside>
 
     <div class="auth-overlay" id="auth-overlay">
@@ -721,6 +774,12 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     }
 
+    function formatGameDate(ts) {
+        if (!ts) return '--/--/----';
+        const d = new Date(ts * 1000);
+        return d.toLocaleDateString('pt-BR');
+    }
+
     function mapGames(payload) {
         const raw = Array.isArray(payload) ? payload : [];
         return raw.map((item, idx) => {
@@ -741,6 +800,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 status: gameStatusByTimer(start, end),
                 statusText: '',
                 hourLabel: formatGameHour(start),
+                dateLabel: formatGameDate(start),
                 homeName: String(home.name || 'Time mandante'),
                 homeImg: String(home.image || ''),
                 homeScore: '',
@@ -1016,15 +1076,38 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             const homeLogo = game.homeImg || game.image || 'imagens/elitelogo.webp';
             const awayLogo = game.awayImg || game.image || 'imagens/elitelogo.webp';
 
+            const statusLabel = String(game.statusText || game.status || 'AGENDADO').toUpperCase();
+            const minuteLabel = game.status === 'AO VIVO' ? (game.statusText || game.hourLabel) : game.hourLabel;
+            const homeScore = game.homeScore !== '' ? game.homeScore : '0';
+            const awayScore = game.awayScore !== '' ? game.awayScore : '0';
+
             li.innerHTML = `
-                <div class="game-top">
-                    <span class="game-time">${game.hourLabel}</span>
-                    <span class="game-status">${game.statusText || game.status}</span>
+                <div class="game-head">
+                    <div class="game-head-title">${game.league}</div>
                 </div>
-                <div class="game-league">${game.league}</div>
-                <div class="game-teams">
-                    <div class="game-team"><img src="${homeLogo}" alt="${game.homeName}"><span class="team-name">${game.homeName}</span><span class="team-score">${game.homeScore || ''}</span></div>
-                    <div class="game-team"><img src="${awayLogo}" alt="${game.awayName}"><span class="team-name">${game.awayName}</span><span class="team-score">${game.awayScore || ''}</span></div>
+                <div class="game-body">
+                    <div class="game-badges">
+                        <span class="game-badge minute">${minuteLabel}</span>
+                        <span class="game-badge ${game.status === 'AO VIVO' ? 'live' : ''}">${statusLabel}</span>
+                    </div>
+                    <div class="game-teams-grid">
+                        <div class="game-team-col">
+                            <img src="${homeLogo}" alt="${game.homeName}">
+                            <div class="game-team-name">${game.homeName}</div>
+                        </div>
+                        <div class="game-score-box">
+                            <div class="game-score">${homeScore} - ${awayScore}</div>
+                            <small>Placar</small>
+                        </div>
+                        <div class="game-team-col">
+                            <img src="${awayLogo}" alt="${game.awayName}">
+                            <div class="game-team-name">${game.awayName}</div>
+                        </div>
+                    </div>
+                    <div class="game-foot">
+                        <span class="date">${game.dateLabel}</span>
+                        <span class="time">${game.hourLabel}</span>
+                    </div>
                 </div>
             `;
 
