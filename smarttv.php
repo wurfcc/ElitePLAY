@@ -142,14 +142,14 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         .games-panel {
             position: absolute;
             top: 0;
-            right: 0;
+            left: 0;
             bottom: 0;
             width: min(42vw, 540px);
             z-index: 30;
-            transform: translate3d(102%, 0, 0);
+            transform: translate3d(-102%, 0, 0);
             transition: transform 0.16s ease-out;
             background: var(--panel-strong);
-            border-left: 1px solid var(--line);
+            border-right: 1px solid var(--line);
             display: grid;
             grid-template-rows: auto 1fr auto;
             will-change: transform;
@@ -211,6 +211,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         .cat-btn.nav-focus {
             border-color: #22c55e;
             box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.22);
+            color: #dcfce7;
         }
 
         .channel-list {
@@ -497,10 +498,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         </div>
         <ul class="channel-list" id="channel-list"></ul>
         <div class="menu-foot">
-            <span class="hint-pill">LEFT (2x): categorias</span>
+            <span class="hint-pill">LEFT: foco categorias</span>
             <span class="hint-pill">UP/DOWN: navegar</span>
             <span class="hint-pill">ENTER: reproduzir</span>
-            <span class="hint-pill">RIGHT: jogos hoje</span>
+            <span class="hint-pill">RIGHT: fechar/foco</span>
         </div>
     </aside>
 
@@ -513,7 +514,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         <div class="menu-foot">
             <span class="hint-pill">UP/DOWN: navegar</span>
             <span class="hint-pill">ENTER: filtrar</span>
-            <span class="hint-pill">RIGHT/BACK: fechar</span>
+            <span class="hint-pill">LEFT: abrir jogos</span>
+            <span class="hint-pill">RIGHT/BACK: voltar</span>
         </div>
     </aside>
 
@@ -524,10 +526,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         </div>
         <ul class="games-list" id="games-list"></ul>
         <div class="menu-foot">
-            <span class="hint-pill">RIGHT: abrir jogos</span>
+            <span class="hint-pill">LEFT: navegar jogos</span>
             <span class="hint-pill">UP/DOWN: navegar</span>
             <span class="hint-pill">ENTER: abrir jogo</span>
-            <span class="hint-pill">LEFT/BACK: fechar</span>
+            <span class="hint-pill">RIGHT/BACK: voltar</span>
         </div>
     </aside>
 
@@ -582,6 +584,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     let menuOpen = false;
     let categoryOpen = false;
     let gamesOpen = false;
+    let menuFocus = 'channels';
     let lastOkAt = 0;
     let smartTvAuthorized = false;
     let pairId = '';
@@ -592,7 +595,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     let gameItemEls = [];
     let categoryBtnEls = [];
 
-    const FIXED_CATEGORIES = ['TELECINE', 'PREMIERE', 'SPORTV', 'ESPN', 'ESPORTES', 'HBO', 'BBB', 'ABERTOS'];
+    const FIXED_CATEGORIES = ['TODOS', 'TELECINE', 'PREMIERE', 'SPORTV', 'ESPN', 'ESPORTES', 'HBO', 'BBB', 'ABERTOS'];
 
     function showTopHudTemporarily() {
         if (!topHud) return;
@@ -791,6 +794,8 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     }
 
     function channelMatchesFixedCategory(channel, categoryName) {
+        if (categoryName === 'TODOS') return true;
+
         const name = normalizeText(channel?.name || '');
         const cat = normalizeText(channel?.category || '');
         const combined = `${name} ${cat}`;
@@ -913,7 +918,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     function updateCategoryNavFocus() {
         if (!categoryBtnEls.length) return;
         categoryBtnEls.forEach((btn, idx) => {
-            btn.classList.toggle('nav-focus', idx === categoryNavIndex && menuOpen);
+            btn.classList.toggle('nav-focus', idx === categoryNavIndex && menuOpen && menuFocus === 'categories');
         });
         const activeBtn = categoryBtnEls[categoryNavIndex];
         if (activeBtn) {
@@ -1128,18 +1133,27 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     function openMenu() {
         closeGamesPanel(false);
         menuOpen = true;
+        categoryOpen = true;
+        menuFocus = 'channels';
         menuPanel.classList.add('open');
         menuPanel.setAttribute('aria-hidden', 'false');
+        categoryPanel.classList.add('open');
+        categoryPanel.setAttribute('aria-hidden', 'false');
+        menuPanel.classList.add('with-category');
         if (topHud) topHud.classList.remove('hidden');
         updateCategoryNavFocus();
         updateActiveChannelItem();
     }
 
     function closeMenu(selectedChannel) {
-        closeCategoryPanel(false);
         menuOpen = false;
+        categoryOpen = false;
+        menuFocus = 'channels';
         menuPanel.classList.remove('open');
         menuPanel.setAttribute('aria-hidden', 'true');
+        categoryPanel.classList.remove('open');
+        categoryPanel.setAttribute('aria-hidden', 'true');
+        menuPanel.classList.remove('with-category');
         updateCategoryNavFocus();
         if (selectedChannel) {
             showTopHudTemporarily();
@@ -1148,19 +1162,13 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
     function openCategoryPanel() {
         if (!menuOpen) return;
-        categoryOpen = true;
-        categoryPanel.classList.add('open');
-        categoryPanel.setAttribute('aria-hidden', 'false');
-        menuPanel.classList.add('with-category');
+        menuFocus = 'categories';
         updateCategoryNavFocus();
     }
 
     function closeCategoryPanel(applyCurrent) {
-        if (!categoryOpen) return;
-        categoryOpen = false;
-        categoryPanel.classList.remove('open');
-        categoryPanel.setAttribute('aria-hidden', 'true');
-        menuPanel.classList.remove('with-category');
+        if (!menuOpen) return;
+        menuFocus = 'channels';
         if (applyCurrent) {
             applyCategoryByIndex(categoryNavIndex);
         }
@@ -1216,10 +1224,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
                 closeGamesPanel(false);
                 return;
             }
-            if (categoryOpen) {
-                closeCategoryPanel(false);
-                return;
-            }
             if (menuOpen) {
                 closeMenu(false);
                 return;
@@ -1240,29 +1244,33 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         if (key === 'ArrowLeft') {
-            if (gamesOpen) {
-                closeGamesPanel(false);
+            if (!menuOpen && !gamesOpen) {
                 openMenu();
-            } else if (!menuOpen) {
-                openMenu();
-            } else if (!categoryOpen) {
+            } else if (menuOpen && menuFocus === 'channels') {
                 openCategoryPanel();
-            } else {
-                setCategoryByStep(-1);
-                updateCategoryNavFocus();
+            } else if (menuOpen && menuFocus === 'categories') {
+                openGamesPanel();
             }
             return;
         }
 
         if (key === 'ArrowRight') {
-            if (categoryOpen) {
+            if (gamesOpen) {
+                openMenu();
+                openCategoryPanel();
+                return;
+            }
+
+            if (menuOpen && menuFocus === 'categories') {
                 closeCategoryPanel(true);
                 return;
             }
-            if (menuOpen) {
+
+            if (menuOpen && menuFocus === 'channels') {
                 closeMenu(false);
+                return;
             }
-            openGamesPanel();
+
             return;
         }
 
@@ -1274,7 +1282,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         if (key === 'ArrowUp') {
-            if (categoryOpen) {
+            if (menuOpen && menuFocus === 'categories') {
                 setCategoryByStep(-1);
                 updateCategoryNavFocus();
             } else if (menuOpen) {
@@ -1288,7 +1296,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         if (key === 'ArrowDown') {
-            if (categoryOpen) {
+            if (menuOpen && menuFocus === 'categories') {
                 setCategoryByStep(1);
                 updateCategoryNavFocus();
             } else if (menuOpen) {
@@ -1302,7 +1310,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
         }
 
         if (isEnter) {
-            if (categoryOpen) {
+            if (menuOpen && menuFocus === 'categories') {
                 closeCategoryPanel(true);
             } else if (menuOpen) {
                 playSelectedChannel();
@@ -1349,7 +1357,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
             channels = mapChannels(payload);
             categories = [...FIXED_CATEGORIES];
             if (!categories.includes(selectedCategory)) {
-                selectedCategory = categories[0] || 'TELECINE';
+                selectedCategory = categories[0] || 'TODOS';
             }
 
             applyCategoryFilter();
@@ -1470,11 +1478,6 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
     function handlePopStateNavigation() {
         if (gamesOpen) {
             closeGamesPanel(false);
-            lockBackNavigation();
-            return;
-        }
-        if (categoryOpen) {
-            closeCategoryPanel(false);
             lockBackNavigation();
             return;
         }
