@@ -4,6 +4,190 @@ const HOME_BANNERS_FILE = __DIR__ . '/data/home_banners.json';
 const HOME_BANNERS_SETTINGS_FILE = __DIR__ . '/data/home_banners_settings.json';
 const HOME_BANNERS_UPLOAD_DIR = __DIR__ . '/uploads/home_banners';
 const HOME_BANNERS_WEB_PATH = 'uploads/home_banners';
+const HOME_BANNERS_DB_TABLE = 'home_banners';
+const HOME_BANNERS_SETTINGS_DB_TABLE = 'home_banners_settings';
+
+function home_banners_db_tables_exist(PDO $pdo): bool
+{
+    try {
+        $pdo->query('SELECT id, sort_order, link, desktop_image, mobile_image FROM ' . HOME_BANNERS_DB_TABLE . ' LIMIT 1');
+        $pdo->query('SELECT setting_key, setting_value FROM ' . HOME_BANNERS_SETTINGS_DB_TABLE . ' LIMIT 1');
+        return true;
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function home_banners_ensure_schema(PDO $pdo): bool
+{
+    try {
+        $pdo->exec('CREATE TABLE IF NOT EXISTS ' . HOME_BANNERS_DB_TABLE . ' (
+            id VARCHAR(40) NOT NULL PRIMARY KEY,
+            sort_order INT NOT NULL DEFAULT 0,
+            link VARCHAR(500) NOT NULL DEFAULT \'\',
+            desktop_image VARCHAR(255) NOT NULL DEFAULT \'\',
+            mobile_image VARCHAR(255) NOT NULL DEFAULT \'\',
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_sort_order (sort_order)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+
+        $pdo->exec('CREATE TABLE IF NOT EXISTS ' . HOME_BANNERS_SETTINGS_DB_TABLE . ' (
+            setting_key VARCHAR(80) NOT NULL PRIMARY KEY,
+            setting_value TEXT NOT NULL,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+
+        return true;
+    } catch (Throwable $e) {
+        return home_banners_db_tables_exist($pdo);
+    }
+}
+
+function home_banners_get_db(): ?PDO
+{
+    static $resolved = false;
+    static $pdo = null;
+    static $schemaOk = false;
+
+    if ($resolved) {
+        return $schemaOk ? $pdo : null;
+    }
+
+    $resolved = true;
+
+    if (!function_exists('db')) {
+        return null;
+    }
+
+    try {
+        $candidate = db();
+        if (!($candidate instanceof PDO)) {
+            return null;
+        }
+
+        if (!home_banners_ensure_schema($candidate)) {
+            return null;
+        }
+
+        $pdo = $candidate;
+        $schemaOk = true;
+
+        return $pdo;
+    } catch (Throwable $e) {
+        $pdo = null;
+        $schemaOk = false;
+        return null;
+    }
+}
+
+function home_load_banners_from_json_file(): array
+{
+    if (!is_file(HOME_BANNERS_FILE)) {
+        return [];
+    }
+
+    $json = @file_get_contents(HOME_BANNERS_FILE);
+    if ($json === false || $json === '') {
+        return [];
+    }
+
+    $decoded = json_decode($json, true);
+    if (!is_array($decoded)) {
+        return [];
+    }
+
+    return normalize_home_banners($decoded);
+}
+
+function home_save_banners_to_json_file(array $banners): bool
+{
+    $json = json_encode($banners, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        return false;
+    }
+
+    return home_write_json_file(HOME_BANNERS_FILE, $json);
+}
+
+function home_load_banners_settings_from_json_file(): array
+{
+    $defaults = home_banners_default_settings();
+    if (!is_file(HOME_BANNERS_SETTINGS_FILE)) {
+        return $defaults;
+    }
+
+    $json = @file_get_contents(HOME_BANNERS_SETTINGS_FILE);
+    if ($json === false || $json === '') {
+        return $defaults;
+    }
+
+    $decoded = json_decode($json, true);
+    if (!is_array($decoded)) {
+        return $defaults;
+    }
+
+    return [
+        'enabled' => isset($decoded['enabled']) ? (bool)$decoded['enabled'] : true,
+    ];
+}
+
+function home_save_banners_settings_to_json_file(array $settings): bool
+{
+    $payload = [
+        'enabled' => isset($settings['enabled']) ? (bool)$settings['enabled'] : true,
+    ];
+
+    $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        return false;
+    }
+
+    return home_write_json_file(HOME_BANNERS_SETTINGS_FILE, $json);
+}
+
+function home_maybe_migrate_json_to_db(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+
+    try {
+        $countStmt = $pdo->query('SELECT COUNT(*) AS total FROM ' . HOME_BANNERS_DB_TABLE);
+        $total = (int)($countStmt ? $countStmt->fetchColumn() : 0);
+        if ($total === 0) {
+            $jsonBanners = home_load_banners_from_json_file();
+            if (!empty($jsonBanners)) {
+                $pdo->beginTransaction();
+                $insertBanner = $pdo->prepare('INSERT INTO ' . HOME_BANNERS_DB_TABLE . ' (id, sort_order, link, desktop_image, mobile_image) VALUES (?, ?, ?, ?, ?)');
+                foreach ($jsonBanners as $idx => $banner) {
+                    $insertBanner->execute([
+                        (string)$banner['id'],
+                        (int)$idx,
+                        (string)$banner['link'],
+                        (string)$banner['desktop_image'],
+                        (string)$banner['mobile_image'],
+                    ]);
+                }
+                $pdo->commit();
+            }
+        }
+
+        $settingsStmt = $pdo->prepare('SELECT setting_value FROM ' . HOME_BANNERS_SETTINGS_DB_TABLE . ' WHERE setting_key = ? LIMIT 1');
+        $settingsStmt->execute(['home_carousel_enabled']);
+        $hasSetting = $settingsStmt->fetchColumn();
+        if ($hasSetting === false) {
+            $jsonSettings = home_load_banners_settings_from_json_file();
+            $upsert = $pdo->prepare('INSERT INTO ' . HOME_BANNERS_SETTINGS_DB_TABLE . ' (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)');
+            $upsert->execute([
+                'home_carousel_enabled',
+                !empty($jsonSettings['enabled']) ? '1' : '0',
+            ]);
+        }
+    } catch (Throwable $e) {
+    }
+}
 
 function home_write_json_file(string $targetPath, string $json): bool
 {
@@ -70,38 +254,42 @@ function home_banners_default_settings(): array
 
 function load_home_banners_settings(): array
 {
-    $defaults = home_banners_default_settings();
-    if (!is_file(HOME_BANNERS_SETTINGS_FILE)) {
-        return $defaults;
+    $pdo = home_banners_get_db();
+    if ($pdo instanceof PDO) {
+        home_maybe_migrate_json_to_db($pdo);
+        try {
+            $stmt = $pdo->prepare('SELECT setting_value FROM ' . HOME_BANNERS_SETTINGS_DB_TABLE . ' WHERE setting_key = ? LIMIT 1');
+            $stmt->execute(['home_carousel_enabled']);
+            $value = $stmt->fetchColumn();
+            if ($value !== false) {
+                return [
+                    'enabled' => $value === '1' || $value === 1 || $value === true,
+                ];
+            }
+        } catch (Throwable $e) {
+        }
     }
 
-    $json = @file_get_contents(HOME_BANNERS_SETTINGS_FILE);
-    if ($json === false || $json === '') {
-        return $defaults;
-    }
-
-    $decoded = json_decode($json, true);
-    if (!is_array($decoded)) {
-        return $defaults;
-    }
-
-    return [
-        'enabled' => isset($decoded['enabled']) ? (bool)$decoded['enabled'] : true,
-    ];
+    return home_load_banners_settings_from_json_file();
 }
 
 function save_home_banners_settings(array $settings): bool
 {
-    $payload = [
-        'enabled' => isset($settings['enabled']) ? (bool)$settings['enabled'] : true,
-    ];
+    $enabled = isset($settings['enabled']) ? (bool)$settings['enabled'] : true;
+    $pdo = home_banners_get_db();
 
-    $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if ($json === false) {
-        return false;
+    if ($pdo instanceof PDO) {
+        home_maybe_migrate_json_to_db($pdo);
+        try {
+            $stmt = $pdo->prepare('INSERT INTO ' . HOME_BANNERS_SETTINGS_DB_TABLE . ' (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)');
+            $stmt->execute(['home_carousel_enabled', $enabled ? '1' : '0']);
+            home_save_banners_settings_to_json_file(['enabled' => $enabled]);
+            return true;
+        } catch (Throwable $e) {
+        }
     }
 
-    return home_write_json_file(HOME_BANNERS_SETTINGS_FILE, $json);
+    return home_save_banners_settings_to_json_file(['enabled' => $enabled]);
 }
 
 function home_generate_banner_id(): string
@@ -195,33 +383,55 @@ function normalize_home_banners(array $raw): array
 
 function load_home_banners(): array
 {
-    if (!is_file(HOME_BANNERS_FILE)) {
-        return [];
+    $pdo = home_banners_get_db();
+    if ($pdo instanceof PDO) {
+        home_maybe_migrate_json_to_db($pdo);
+        try {
+            $stmt = $pdo->query('SELECT id, link, desktop_image, mobile_image FROM ' . HOME_BANNERS_DB_TABLE . ' ORDER BY sort_order ASC, id ASC');
+            $rows = $stmt ? $stmt->fetchAll() : [];
+            if (is_array($rows)) {
+                return normalize_home_banners($rows);
+            }
+        } catch (Throwable $e) {
+        }
     }
 
-    $json = @file_get_contents(HOME_BANNERS_FILE);
-    if ($json === false || $json === '') {
-        return [];
-    }
-
-    $decoded = json_decode($json, true);
-    if (!is_array($decoded)) {
-        return [];
-    }
-
-    return normalize_home_banners($decoded);
+    return home_load_banners_from_json_file();
 }
 
 function save_home_banners(array $banners): bool
 {
     $normalized = normalize_home_banners($banners);
 
-    $json = json_encode($normalized, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if ($json === false) {
-        return false;
+    $pdo = home_banners_get_db();
+    if ($pdo instanceof PDO) {
+        home_maybe_migrate_json_to_db($pdo);
+        try {
+            $pdo->beginTransaction();
+            $pdo->exec('DELETE FROM ' . HOME_BANNERS_DB_TABLE);
+            $insert = $pdo->prepare('INSERT INTO ' . HOME_BANNERS_DB_TABLE . ' (id, sort_order, link, desktop_image, mobile_image) VALUES (?, ?, ?, ?, ?)');
+
+            foreach ($normalized as $idx => $banner) {
+                $insert->execute([
+                    (string)$banner['id'],
+                    (int)$idx,
+                    (string)$banner['link'],
+                    (string)$banner['desktop_image'],
+                    (string)$banner['mobile_image'],
+                ]);
+            }
+
+            $pdo->commit();
+            home_save_banners_to_json_file($normalized);
+            return true;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+        }
     }
 
-    return home_write_json_file(HOME_BANNERS_FILE, $json);
+    return home_save_banners_to_json_file($normalized);
 }
 
 function delete_home_banner_asset(string $path): void
