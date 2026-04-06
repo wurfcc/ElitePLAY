@@ -1336,10 +1336,13 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                 $openNewTab = preg_match('/^https?:\/\//i', $slideLink) === 1;
                 ?>
                 <a class="home-banner-slide" href="<?php echo $slideLink !== '' ? htmlspecialchars($slideLink, ENT_QUOTES, 'UTF-8') : '#'; ?>"<?php echo $slideLink !== '' ? ($openNewTab ? ' target="_blank" rel="noopener noreferrer"' : '') : ' onclick="return false;"'; ?>>
-                    <picture>
-                        <source media="(max-width: 768px)" srcset="<?php echo htmlspecialchars($mobileImage, ENT_QUOTES, 'UTF-8'); ?>">
-                        <img src="<?php echo htmlspecialchars($desktopImage, ENT_QUOTES, 'UTF-8'); ?>" alt="Banner ElitePLAY" loading="lazy">
-                    </picture>
+                    <img
+                        src="<?php echo htmlspecialchars($desktopImage, ENT_QUOTES, 'UTF-8'); ?>"
+                        data-desktop-src="<?php echo htmlspecialchars($desktopImage, ENT_QUOTES, 'UTF-8'); ?>"
+                        data-mobile-src="<?php echo htmlspecialchars($mobileImage, ENT_QUOTES, 'UTF-8'); ?>"
+                        alt="Banner ElitePLAY"
+                        loading="lazy"
+                    >
                 </a>
                 <?php endforeach; ?>
             </div>
@@ -2973,6 +2976,18 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
             form.submit();
         }
 
+        function syncHomeBannerImages() {
+            const useMobile = window.matchMedia('(max-width: 768px)').matches;
+            document.querySelectorAll('.home-banner-slide img[data-desktop-src][data-mobile-src]').forEach((img) => {
+                const desktopSrc = String(img.getAttribute('data-desktop-src') || '');
+                const mobileSrc = String(img.getAttribute('data-mobile-src') || '');
+                const desired = useMobile ? (mobileSrc || desktopSrc) : (desktopSrc || mobileSrc);
+                if (desired && img.getAttribute('src') !== desired) {
+                    img.setAttribute('src', desired);
+                }
+            });
+        }
+
         function initHomeBannerCarousel() {
             const carousel = document.getElementById('home-banner-carousel');
             const track = document.getElementById('home-banner-track');
@@ -2997,6 +3012,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
 
             goToSlide(0);
             startAuto();
+            syncHomeBannerImages();
         }
 
         window.onload = () => {
@@ -3013,6 +3029,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
             });
             updateChannelsSourceToggleUI();
             initHomeBannerCarousel();
+            window.addEventListener('resize', syncHomeBannerImages);
             fetchChannels();
         };
     </script>
