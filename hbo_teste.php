@@ -1,12 +1,26 @@
 <?php
-$m3uPath = __DIR__ . '/LISTA M3U TESTE/HBO.m3u';
+$candidatePaths = [
+    __DIR__ . '/hbo_teste.m3u',
+    __DIR__ . '/LISTA M3U TESTE/HBO.m3u',
+];
+
+$m3uPath = '';
+$selectedSource = '';
 $channels = [];
 $readError = '';
 
-if (!is_file($m3uPath)) {
-    $readError = 'Arquivo HBO.m3u nao encontrado no caminho esperado.';
+foreach ($candidatePaths as $path) {
+    if (is_file($path)) {
+        $m3uPath = $path;
+        $selectedSource = str_replace(__DIR__ . '/', '', $path);
+        break;
+    }
+}
+
+if ($m3uPath === '') {
+    $readError = 'Arquivo M3U nao encontrado. Verifique hbo_teste.m3u ou LISTA M3U TESTE/HBO.m3u.';
 } elseif (!is_readable($m3uPath)) {
-    $readError = 'Sem permissao de leitura para HBO.m3u (ou para a pasta LISTA M3U TESTE).';
+    $readError = 'Sem permissao de leitura para o arquivo M3U selecionado.';
 } else {
     $lines = @file($m3uPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     if (!is_array($lines)) {
@@ -136,7 +150,7 @@ if (!is_file($m3uPath)) {
             <aside class="panel list-wrap">
                 <?php if (empty($channels)): ?>
                     <p class="empty">
-                        Nenhum canal encontrado em <code>LISTA M3U TESTE/HBO.m3u</code>.
+                        Nenhum canal encontrado em <code><?php echo htmlspecialchars($selectedSource !== '' ? $selectedSource : 'arquivo M3U', ENT_QUOTES, 'UTF-8'); ?></code>.
                         <?php if ($readError !== ''): ?><br><?php echo htmlspecialchars($readError, ENT_QUOTES, 'UTF-8'); ?><?php endif; ?>
                     </p>
                 <?php else: ?>
