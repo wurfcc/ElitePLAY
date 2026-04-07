@@ -205,13 +205,14 @@ if ($m3uPath === '') {
                 if (!url) return;
 
                 resetPlayers();
+                const proxyUrl = 'hbo_stream_proxy.php?url=' + encodeURIComponent(url);
 
                 const lowerUrl = String(url).toLowerCase();
                 const isHls = lowerUrl.includes('.m3u8');
 
                 if (isHls) {
                     jwplayer('jw-test-player').setup({
-                        file: url,
+                        file: proxyUrl,
                         type: 'hls',
                         width: '100%',
                         aspectratio: '16:9',
@@ -231,13 +232,13 @@ if ($m3uPath === '') {
                         tsPlayer = window.mpegts.createPlayer({
                             type: 'mse',
                             isLive: true,
-                            url: url,
+                            url: proxyUrl,
                         });
                         tsPlayer.attachMediaElement(tsVideo);
                         tsPlayer.load();
                         tsPlayer.play();
                     } else if (tsVideo) {
-                        tsVideo.src = url;
+                        tsVideo.src = proxyUrl;
                         tsVideo.play().catch(() => {});
                     }
                 }
