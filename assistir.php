@@ -319,8 +319,10 @@ if (empty($iframe_url)) {
 
         function shouldUseProxy(url) {
             if (!url) return false;
-            // Streams do EmbedTV devem tocar direto (sem proxy)
-            if (url.includes('mr.cloudfront.lat') || url.includes('s27-usa-cloudfront-net.online')) return false;
+            // Novo domínio do EmbedTV precisa passar pelo proxy local
+            if (url.includes('mr.cloudfront.lat')) return true;
+            // Domínio legado do EmbedTV pode tocar direto
+            if (url.includes('s27-usa-cloudfront-net.online')) return false;
             return true;
         }
 
