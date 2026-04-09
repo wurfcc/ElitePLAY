@@ -318,12 +318,16 @@ if (empty($iframe_url)) {
         }
 
         function shouldUseProxy(url) {
-            if (!url) return false;
-            // Novo domínio do EmbedTV precisa passar pelo proxy local
-            if (url.includes('mr.cloudfront.lat')) return true;
-            // Domínio legado do EmbedTV pode tocar direto
-            if (url.includes('s27-usa-cloudfront-net.online')) return false;
-            return true;
+            // Proxy apenas para APIs no backend. Arquivos m3u8 tocam direto.
+            return false;
+        }
+
+        function getEmbedFallbackUrl(url) {
+            if (!url) return '';
+            if (url.includes('mr.cloudfront.lat')) {
+                return url.replace('mr.cloudfront.lat', 'mr.s27-usa-cloudfront-net.online');
+            }
+            return '';
         }
 
         async function initPlayer(url) {
@@ -338,19 +342,39 @@ if (empty($iframe_url)) {
                 jwDiv.style.display = 'block';
                 iframe.src = 'about:blank';
 
-                const streamUrl = shouldUseProxy(url)
-                    ? ("proxy.php?url=" + encodeURIComponent(url))
-                    : url;
+                const setupJw = (rawUrl, attemptedFallback = false) => {
+                    const streamUrl = shouldUseProxy(rawUrl)
+                        ? ("proxy.php?url=" + encodeURIComponent(rawUrl))
+                        : rawUrl;
 
-                jwplayer("jw-player-container").setup({
-                    file: streamUrl,
-                    type: "hls",
-                    autostart: true,
-                    width: "100%",
-                    height: "100%",
-                    aspectratio: "16:9",
-                    stretching: "uniform"
-                });
+                    jwplayer("jw-player-container").setup({
+                        file: streamUrl,
+                        type: "hls",
+                        autostart: true,
+                        width: "100%",
+                        height: "100%",
+                        aspectratio: "16:9",
+                        stretching: "uniform"
+                    });
+
+                    jwplayer("jw-player-container").once('error', () => {
+                        if (attemptedFallback) return;
+                        const fallbackUrl = getEmbedFallbackUrl(rawUrl);
+                        if (fallbackUrl) {
+                            setupJw(fallbackUrl, true);
+                            return;
+                        }
+
+                        // Fallback final: abre a página embed (quando disponível)
+                        if (rawUrl.includes('mr.cloudfront.lat') && player1Url && !isM3U8(player1Url)) {
+                            jwDiv.style.display = 'none';
+                            iframe.style.display = 'block';
+                            iframe.src = player1Url;
+                        }
+                    });
+                };
+
+                setupJw(url);
 
             } else {
                 jwDiv.style.display = 'none';

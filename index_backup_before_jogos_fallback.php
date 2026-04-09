@@ -938,9 +938,9 @@ $isAdmin = isset($usuario_logado['is_admin']) && $usuario_logado['is_admin'] == 
     <script>
         const isAdmin = <?php echo $isAdmin ? 'true' : 'false'; ?>;
         const apiUrl = 'https://embed.70noticias.com.br/?api=1&t=live&c=all';
-        const epgUrl = 'https://embedtv.best/api/epgs';
-        const jogosUrl = 'https://embedtv.best/api/jogos';
-        const embedtvChannelsUrl = 'https://embedtv.best/api/channels';
+        const epgUrl = 'https://embedtv.cv/api/epgs';
+        const jogosUrl = 'https://embedtv.cv/api/jogos';
+        const embedtvChannelsUrl = 'https://embedtv.cv/api/channels';
         const localDateYmd = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         
         const CACHE_TTL = 5 * 60 * 1000; // 5 minutos

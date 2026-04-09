@@ -14,9 +14,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
 $resource = $_GET['resource'] ?? 'jogos';
 
 $allowed = [
-    'jogos' => 'https://embedtv.best/api/jogos',
-    'channels' => 'https://embedtv.best/api/channels',
-    'epgs' => 'https://embedtv.best/api/epgs',
+    'jogos' => 'https://embedtv.cv/api/jogos',
+    'channels' => 'https://embedtv.cv/api/channels',
+    'epgs' => 'https://embedtv.cv/api/epgs',
 ];
 
 $url = $allowed[$resource] ?? null;
@@ -61,6 +61,9 @@ if ($response === false || $httpCode >= 400) {
     echo json_encode(['error' => 'Falha ao consultar EmbedTV', 'status' => $httpCode], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
+
+// Normaliza links legados do domínio antigo
+$response = str_replace('embedtv.best', 'embedtv.cv', $response);
 
 @file_put_contents($cacheFile, $response, LOCK_EX);
 

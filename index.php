@@ -2739,10 +2739,12 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                 if (channel.streams && channel.streams.length > 1) urlOpcao2 = channel.streams[1].url;
                 if (channel.streams && channel.streams.length > 2) urlOpcao3 = channel.streams[2].url;
 
-                // Usa stream m3u8 ao invés de iframe_url se disponível (melhor compatibilidade mobile)
-                const playerUrl = (channel.streams && channel.streams.length > 0 && channel.streams[0].url.includes('.m3u8')) 
-                    ? channel.streams[0].url 
-                    : channel.iframe_url;
+                // Para domínio novo mr.cloudfront.lat, prioriza página embed (evita erro 232011)
+                const firstStreamUrl = (channel.streams && channel.streams.length > 0) ? String(channel.streams[0].url || '') : '';
+                const shouldUseEmbedPage = firstStreamUrl.includes('mr.cloudfront.lat');
+                const playerUrl = (!shouldUseEmbedPage && firstStreamUrl.includes('.m3u8'))
+                    ? firstStreamUrl
+                    : (channel.iframe_url || firstStreamUrl || '');
 
                 // Condensa os streams numa string base64 para evitar quebra de atributos HTML
                 let streamsStr = '';
@@ -2914,10 +2916,12 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
             if (channel.streams && channel.streams.length > 1) urlOpcao2 = channel.streams[1].url;
             if (channel.streams && channel.streams.length > 2) urlOpcao3 = channel.streams[2].url;
 
-            // Usa stream m3u8 ao invés de iframe_url se disponível (melhor compatibilidade mobile)
-            const playerUrl = (channel.streams && channel.streams.length > 0 && channel.streams[0].url.includes('.m3u8')) 
-                ? channel.streams[0].url 
-                : channel.iframe_url;
+            // Para domínio novo mr.cloudfront.lat, prioriza página embed (evita erro 232011)
+            const firstStreamUrl = (channel.streams && channel.streams.length > 0) ? String(channel.streams[0].url || '') : '';
+            const shouldUseEmbedPage = firstStreamUrl.includes('mr.cloudfront.lat');
+            const playerUrl = (!shouldUseEmbedPage && firstStreamUrl.includes('.m3u8'))
+                ? firstStreamUrl
+                : (channel.iframe_url || firstStreamUrl || '');
 
             let streamsStr = '';
             if (channel.streams && channel.streams.length > 0) {
