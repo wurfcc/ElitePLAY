@@ -1930,8 +1930,8 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                                     overrideStreams.push({ name: existingStream.name, url: stream.url });
                                     return;
                                 }
-                                // Verifica se é stream do EmbedTV (URL contém mr.s27-usa-cloudfront-net.online)
-                                const isEmbedtv = stream.url.includes('mr.s27-usa-cloudfront-net.online');
+                                // Verifica se é stream do EmbedTV
+                                const isEmbedtv = stream.url.includes('mr.cloudfront.lat') || stream.url.includes('mr.s27-usa-cloudfront-net.online');
                                 if (isEmbedtv) {
                                     // EmbedTV: nome no formato ELITE-CHANNELNAME (sem qualidade)
                                     overrideStreams.push({ name: `ELITE-${ovName.toUpperCase()}`, url: stream.url });
@@ -1952,7 +1952,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                                     return;
                                 }
                                 // Verifica se é stream do EmbedTV
-                                const isEmbedtv = s.url.includes('mr.s27-usa-cloudfront-net.online');
+                                const isEmbedtv = s.url.includes('mr.cloudfront.lat') || s.url.includes('mr.s27-usa-cloudfront-net.online');
                                 if (isEmbedtv) {
                                     overrideStreams.push({ name: `ELITE-${ovName.toUpperCase()}`, url: s.url });
                                 } else {
@@ -2179,7 +2179,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
 
                     resEmbed.channels.forEach(c => {
                         const norm = normalizeName(c.name);
-                        const m3u8Url = `https://mr.s27-usa-cloudfront-net.online/fontes/mr/${c.id}.m3u8`;
+                        const m3u8Url = `https://mr.cloudfront.lat/fontes/mr/${c.id}.m3u8`;
 
                         let catName = 'EmbedTV';
                         if (c.categories && Array.isArray(c.categories)) {

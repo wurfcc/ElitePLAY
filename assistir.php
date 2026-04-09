@@ -319,8 +319,8 @@ if (empty($iframe_url)) {
 
         function shouldUseProxy(url) {
             if (!url) return false;
-            // Streams do s27 devem tocar direto (sem proxy)
-            if (url.includes('s27-usa-cloudfront-net.online')) return false;
+            // Streams do EmbedTV devem tocar direto (sem proxy)
+            if (url.includes('mr.cloudfront.lat') || url.includes('s27-usa-cloudfront-net.online')) return false;
             return true;
         }
 
