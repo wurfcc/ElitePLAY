@@ -17,9 +17,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ElitePLAY - Canais ao Vivo</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/fonts/outfit/outfit.css">
     <style>
         :root {
             --bg-dark: #05070a;
@@ -2058,7 +2056,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                                     return `${hh}h${mi}`;
                                 })()}</span>
                             </div>
-                            ${!isFinished ? `<button onclick="enviarParaPlayer('${initialPlayerUrl}', '${safeTitle}', '${jogo.image}', '${originalEmbedTvUrl}', '', '${gameStreamsStr}')" class="watch-premium-button" style="flex: 1;">Assistir Agora</button>` : ''}
+                            ${!isFinished ? `<button onclick="enviarParaPlayer('${initialPlayerUrl}', '${safeTitle}', '${jogo.image}', '${originalEmbedTvUrl}', '', '${gameStreamsStr}', '1', '${jogoId.replace(/'/g, "\\'")}')" class="watch-premium-button" style="flex: 1;">Assistir Agora</button>` : ''}
                         </div>
                     </div>
                 </div>
@@ -2947,7 +2945,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
         }
 
         // Modificado para receber a 6ª variável (streams dinâmicos codificados em base64)
-        function enviarParaPlayer(iframeUrl, title, logo, urlOpcao2 = '', urlOpcao3 = '', streamsBase64 = '') {
+        function enviarParaPlayer(iframeUrl, title, logo, urlOpcao2 = '', urlOpcao3 = '', streamsBase64 = '', isGameContext = '', currentGameId = '') {
             // Salva estado no sessionStorage antes de ir para assistir.php
             sessionStorage.setItem('eliteplay_from_assistir', '1');
             sessionStorage.setItem('eliteplay_scroll_pos', window.scrollY);
@@ -2993,6 +2991,22 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
             inputLogo.name = 'logo';
             inputLogo.value = logo;
             form.appendChild(inputLogo);
+
+            if (isGameContext) {
+                const inputGameContext = document.createElement('input');
+                inputGameContext.type = 'hidden';
+                inputGameContext.name = 'is_game_context';
+                inputGameContext.value = isGameContext;
+                form.appendChild(inputGameContext);
+            }
+
+            if (currentGameId) {
+                const inputCurrentGame = document.createElement('input');
+                inputCurrentGame.type = 'hidden';
+                inputCurrentGame.name = 'current_game_id';
+                inputCurrentGame.value = currentGameId;
+                form.appendChild(inputCurrentGame);
+            }
 
             document.body.appendChild(form);
             form.submit();
