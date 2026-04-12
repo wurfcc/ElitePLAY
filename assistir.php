@@ -324,8 +324,8 @@ if (empty($iframe_url)) {
 
         function getEmbedFallbackUrl(url) {
             if (!url) return '';
-            if (url.includes('mr.cloudfront.lat')) {
-                return url.replace('mr.cloudfront.lat', 'mr.s27-usa-cloudfront-net.online');
+            if (url.includes('mr.cloudfronte.lat')) {
+                return url.replace('mr.cloudfronte.lat', 'mr.s27-usa-cloudfront-net.online');
             }
             return '';
         }
@@ -366,7 +366,7 @@ if (empty($iframe_url)) {
                         }
 
                         // Fallback final: abre a página embed (quando disponível)
-                        if (rawUrl.includes('mr.cloudfront.lat') && player1Url && !isM3U8(player1Url)) {
+                        if (rawUrl.includes('mr.cloudfronte.lat') && player1Url && !isM3U8(player1Url)) {
                             jwDiv.style.display = 'none';
                             iframe.style.display = 'block';
                             iframe.src = player1Url;

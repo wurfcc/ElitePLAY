@@ -1931,7 +1931,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                                     return;
                                 }
                                 // Verifica se é stream do EmbedTV
-                                const isEmbedtv = stream.url.includes('mr.cloudfront.lat') || stream.url.includes('mr.s27-usa-cloudfront-net.online');
+                                const isEmbedtv = stream.url.includes('mr.cloudfronte.lat') || stream.url.includes('mr.s27-usa-cloudfront-net.online');
                                 if (isEmbedtv) {
                                     // EmbedTV: nome no formato ELITE-CHANNELNAME (sem qualidade)
                                     overrideStreams.push({ name: `ELITE-${ovName.toUpperCase()}`, url: stream.url });
@@ -1952,7 +1952,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                                     return;
                                 }
                                 // Verifica se é stream do EmbedTV
-                                const isEmbedtv = s.url.includes('mr.cloudfront.lat') || s.url.includes('mr.s27-usa-cloudfront-net.online');
+                                const isEmbedtv = s.url.includes('mr.cloudfronte.lat') || s.url.includes('mr.s27-usa-cloudfront-net.online');
                                 if (isEmbedtv) {
                                     overrideStreams.push({ name: `ELITE-${ovName.toUpperCase()}`, url: s.url });
                                 } else {
@@ -2179,7 +2179,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
 
                     resEmbed.channels.forEach(c => {
                         const norm = normalizeName(c.name);
-                        const m3u8Url = `https://mr.cloudfront.lat/fontes/mr/${c.id}.m3u8`;
+                        const m3u8Url = `https://mr.cloudfronte.lat/fontes/mr/${c.id}.m3u8`;
 
                         let catName = 'EmbedTV';
                         if (c.categories && Array.isArray(c.categories)) {
@@ -2739,9 +2739,9 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                 if (channel.streams && channel.streams.length > 1) urlOpcao2 = channel.streams[1].url;
                 if (channel.streams && channel.streams.length > 2) urlOpcao3 = channel.streams[2].url;
 
-                // Para domínio novo mr.cloudfront.lat, prioriza página embed (evita erro 232011)
+                // Para domínio novo mr.cloudfronte.lat, prioriza página embed (evita erro 232011)
                 const firstStreamUrl = (channel.streams && channel.streams.length > 0) ? String(channel.streams[0].url || '') : '';
-                const shouldUseEmbedPage = firstStreamUrl.includes('mr.cloudfront.lat');
+                const shouldUseEmbedPage = firstStreamUrl.includes('mr.cloudfronte.lat');
                 const playerUrl = (!shouldUseEmbedPage && firstStreamUrl.includes('.m3u8'))
                     ? firstStreamUrl
                     : (channel.iframe_url || firstStreamUrl || '');
@@ -2916,9 +2916,9 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
             if (channel.streams && channel.streams.length > 1) urlOpcao2 = channel.streams[1].url;
             if (channel.streams && channel.streams.length > 2) urlOpcao3 = channel.streams[2].url;
 
-            // Para domínio novo mr.cloudfront.lat, prioriza página embed (evita erro 232011)
+            // Para domínio novo mr.cloudfronte.lat, prioriza página embed (evita erro 232011)
             const firstStreamUrl = (channel.streams && channel.streams.length > 0) ? String(channel.streams[0].url || '') : '';
-            const shouldUseEmbedPage = firstStreamUrl.includes('mr.cloudfront.lat');
+            const shouldUseEmbedPage = firstStreamUrl.includes('mr.cloudfronte.lat');
             const playerUrl = (!shouldUseEmbedPage && firstStreamUrl.includes('.m3u8'))
                 ? firstStreamUrl
                 : (channel.iframe_url || firstStreamUrl || '');
