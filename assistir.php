@@ -551,7 +551,7 @@ if (empty($iframe_url)) {
         }
 
         .game-datetime .game-time {
-            font-size: 0.85rem;
+            font-size: 1.1rem;
             color: var(--text-light);
             font-weight: 700;
         }
@@ -1057,10 +1057,17 @@ if (empty($iframe_url)) {
             try {
                 const decoded = decodeURIComponent(escape(atob(streamsBase64)));
                 const parsed = JSON.parse(decoded);
-                return Array.isArray(parsed) ? parsed : [];
+                return Array.isArray(parsed) ? parsed.filter((s) => !isH265Stream(s)) : [];
             } catch (e) {
                 return [];
             }
+        }
+
+        function isH265Stream(stream) {
+            const name = String(stream?.name || '').toUpperCase();
+            const url = String(stream?.url || '').toUpperCase();
+            return name.includes('H265') || name.includes('H.265') || name.includes('HEVC') ||
+                   url.includes('H265') || url.includes('H.265') || url.includes('HEVC');
         }
 
         function renderPlayerOptions(streams = []) {
@@ -1069,8 +1076,12 @@ if (empty($iframe_url)) {
 
             optionsEl.innerHTML = '';
 
-            if (Array.isArray(streams) && streams.length > 0) {
-                streams.forEach((stream, index) => {
+            const filteredStreams = Array.isArray(streams)
+                ? streams.filter((s) => !isH265Stream(s))
+                : [];
+
+            if (filteredStreams.length > 0) {
+                filteredStreams.forEach((stream, index) => {
                     const btn = document.createElement('button');
                     btn.className = `opt-btn${index === 0 ? ' active' : ''}`;
                     btn.textContent = index === 0 ? 'ELITE 01' : String(stream?.name || `OPCAO ${index + 1}`).toUpperCase();
@@ -1121,6 +1132,7 @@ if (empty($iframe_url)) {
             currentDynamicStreams = decodedStreams.length > 0
                 ? decodedStreams
                 : (safeUrl ? [{ name: 'EmbedTV', url: safeUrl }] : []);
+            currentDynamicStreams = currentDynamicStreams.filter((s) => !isH265Stream(s));
 
             const firstUrl = currentDynamicStreams[0]?.url || safeUrl || activePrimaryPlayerUrl;
             if (!firstUrl) return;
@@ -1328,6 +1340,8 @@ if (empty($iframe_url)) {
                     finalStreams = [...finalStreams, ...overrideStreams];
                 }
             }
+
+            finalStreams = finalStreams.filter((s) => !isH265Stream(s));
 
             if (finalStreams.length > 0) {
                 try {
