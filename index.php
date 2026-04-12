@@ -1794,9 +1794,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
 
             // Tenta encontrar o canal correspondente para pegar as qualidades (FHD, HD, SD) da nova API
             let gameStreamsStr = '';
-            const jogoId = (jogo.id !== undefined && jogo.id !== null && String(jogo.id).trim() !== '')
-                ? String(jogo.id)
-                : ((jogo.data?.timer?.start ? `idx_${jogo.data.timer.start}` : `idx_${normalizeName(jogo.title)}`));
+            const jogoId = buildGameId(jogo);
 
             const OVERRIDE_REMOVE_ORIGINAL_KEY = '__ORIGINAL_API__';
             const adminOverrides = window.adminJogosOverrides || {};
@@ -1810,16 +1808,49 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                 : allChannels;
 
             if (typeof channelsToUse !== 'undefined' && channelsToUse.length > 0) {
-                // Primeiro tenta encontrar pelo embedtv_id (mais confiável)
-                if (originalEmbedTvUrl) {
-                    const urlId = originalEmbedTvUrl.split('/').pop().split('?')[0];
-                    matchedChannel = channelsToUse.find(c => {
-                        return c.embedtv_id === urlId;
+                const apiPlayerIds = (Array.isArray(jogo.players) ? jogo.players : [])
+                    .flatMap(p => String(decodeURIComponent(String(p || ''))).split(','))
+                    .map(v => v.trim())
+                    .filter(Boolean)
+                    .map(v => {
+                        const tail = v.split('/').pop() || v;
+                        return tail.split('?')[0].replace(/\.(m3u8|html?)$/i, '').trim();
+                    })
+                    .filter(Boolean);
+
+                const byApiIdMatches = [];
+                apiPlayerIds.forEach((pid) => {
+                    const pidNorm = normalizeName(pid);
+                    const ch = channelsToUse.find(c => {
+                        const cn = normalizeName(c.nome || '');
+                        if (String(c.embedtv_id || '') === pid) return true;
+                        if (cn === pidNorm || cn.replace(/1$/, '') === pidNorm || pidNorm.replace(/1$/, '') === cn) return true;
+                        const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
+                        const pidSportv = pidNorm.replace(/^sporto(\d+)$/, 'sportv$1');
+                        if (cnSportv === pidNorm || cn === pidSportv || cnSportv === pidSportv) return true;
+                        if (cn.includes(pidNorm) || pidNorm.includes(cn)) return true;
+                        return cn.startsWith(pidNorm) || pidNorm.startsWith(cn);
+                    });
+                    if (ch && !byApiIdMatches.some(x => x.nome === ch.nome)) byApiIdMatches.push(ch);
+                });
+
+                if (byApiIdMatches.length > 0) {
+                    matchedChannel = byApiIdMatches[0];
+                    byApiIdMatches.forEach(ch => {
+                        (Array.isArray(ch.streams) ? ch.streams : []).forEach(s => {
+                            if (!detectedStreams.some(ds => ds.url === s.url)) {
+                                detectedStreams.push({ name: s.name, url: s.url });
+                            }
+                        });
                     });
                 }
 
-                // Se não encontrou, tenta pelo nome do jogo
-                if (!matchedChannel) {
+                if (detectedStreams.length === 0 && originalEmbedTvUrl) {
+                    const urlId = originalEmbedTvUrl.split('/').pop().split('?')[0];
+                    matchedChannel = channelsToUse.find(c => c.embedtv_id === urlId);
+                }
+
+                if (detectedStreams.length === 0 && !matchedChannel) {
                     const gameTitleNorm = normalizeName(jogo.title);
                     matchedChannel = channelsToUse.find(c => {
                         const chanNameNorm = normalizeName(c.nome);
@@ -1827,8 +1858,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                     });
                 }
 
-                // Se ainda não encontrou, tenta pelo ID normalizado
-                if (!matchedChannel && originalEmbedTvUrl) {
+                if (detectedStreams.length === 0 && !matchedChannel && originalEmbedTvUrl) {
                     let urlId = originalEmbedTvUrl.split('id=').pop().split('&')[0];
                     if (!urlId || urlId.includes('/') || urlId === originalEmbedTvUrl) {
                         urlId = originalEmbedTvUrl.split('?')[0].replace(/\/$/, '').split('/').pop();
@@ -1837,8 +1867,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                         const idNorm = normalizeName(urlId);
                         matchedChannel = channelsToUse.find(c => {
                             const cn = normalizeName(c.nome);
-                            if (cn === idNorm || cn.replace(/1$/) === idNorm || idNorm.replace(/1$/) === cn) return true;
-                            // Tratamento especial para SporTV X: "sportoX" = "sportvX"
+                            if (cn === idNorm || cn.replace(/1$/, '') === idNorm || idNorm.replace(/1$/, '') === cn) return true;
                             const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
                             const idNormSportv = idNorm.replace(/^sporto(\d+)$/, 'sportv$1');
                             return cnSportv === idNorm || cn === idNormSportv || cnSportv === idNormSportv;
@@ -1846,7 +1875,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                     }
                 }
 
-                if (matchedChannel && matchedChannel.streams && matchedChannel.streams.length > 0) {
+                if (detectedStreams.length === 0 && matchedChannel && matchedChannel.streams && matchedChannel.streams.length > 0) {
                     detectedStreams = matchedChannel.streams.slice();
                 }
             }
@@ -1861,7 +1890,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                     const idNorm = normalizeName(urlId);
                     const matchByUrl = channelsToUse.find(c => {
                         const cn = normalizeName(c.nome);
-                        if (cn === idNorm || cn.replace(/1$/) === idNorm || idNorm.replace(/1$/) === cn) return true;
+                        if (cn === idNorm || cn.replace(/1$/, '') === idNorm || idNorm.replace(/1$/, '') === cn) return true;
                         // Tratamento especial para SporTV X: "sportoX" = "sportvX"
                         const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
                         const idNormSportv = idNorm.replace(/^sporto(\d+)$/, 'sportv$1');
@@ -1898,67 +1927,66 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                         return;
                     }
 
-                    const ovNorm = normalizeName(ovName);
+                    const overrideNames = ovName.split(',').map(v => v.trim()).filter(Boolean);
+                    const namesToProcess = overrideNames.length > 0 ? overrideNames : [ovName];
 
-                    // Procura canal pelo nome exato ou similar
-                    const matchChan = channelsToUse.find(c => {
-                        const cnNorm = normalizeName(c.nome);
-                        return cnNorm === ovNorm ||
-                               ovNorm.includes(cnNorm) ||
-                               cnNorm.includes(ovNorm) ||
-                               cnNorm.replace(/[^a-z0-9]/g, '').includes(ovNorm.replace(/[^a-z0-9]/g, ''));
-                    });
+                    namesToProcess.forEach((singleName) => {
+                        const ovNorm = normalizeName(singleName);
 
-                    if (ov.remove_channel) return;
-                    if (!matchChan || !matchChan.streams) return;
+                        const matchChan = channelsToUse.find(c => {
+                            const cnNorm = normalizeName(c.nome);
+                            return cnNorm === ovNorm ||
+                                   ovNorm.includes(cnNorm) ||
+                                   cnNorm.includes(ovNorm) ||
+                                   cnNorm.replace(/[^a-z0-9]/g, '').includes(ovNorm.replace(/[^a-z0-9]/g, ''));
+                        });
 
-                    // CONTROLE TOTAL: usa SOMENTE as qualidades especificadas no override
-                    if (Array.isArray(ov.qualities) && ov.qualities.length > 0) {
-                        ov.qualities.forEach(q => {
-                            // Procura stream que contenha a qualidade especificada
-                            const qUpper = String(q).toUpperCase();
-                            const stream = matchChan.streams.find(s => {
-                                const sNameUpper = String(s.name).toUpperCase();
-                                return sNameUpper.includes(qUpper) || qUpper.includes(sNameUpper);
+                        if (!matchChan || !matchChan.streams) return;
+
+                        if (ov.remove_channel) {
+                            finalStreams = finalStreams.filter(fs => !matchChan.streams.some(ms => ms.url === fs.url));
+                            return;
+                        }
+
+                        if (Array.isArray(ov.qualities) && ov.qualities.length > 0) {
+                            ov.qualities.forEach(q => {
+                                const qUpper = String(q).toUpperCase();
+                                const stream = matchChan.streams.find(s => {
+                                    const sNameUpper = String(s.name).toUpperCase();
+                                    return sNameUpper.includes(qUpper) || qUpper.includes(sNameUpper);
+                                });
+                                if (stream && !overrideStreams.some(x => x.url === stream.url)) {
+                                    const existingStream = detectedStreams.find(d => d.url === stream.url);
+                                    if (existingStream) {
+                                        overrideStreams.push({ name: existingStream.name, url: stream.url });
+                                        return;
+                                    }
+                                    const isEmbedtv = stream.url.includes('mr.cloudfronte.lat') || stream.url.includes('mr.s27-usa-cloudfront-net.online');
+                                    if (isEmbedtv) {
+                                        overrideStreams.push({ name: `ELITE-${singleName.toUpperCase()}`, url: stream.url });
+                                    } else {
+                                        overrideStreams.push({ name: stream.name, url: stream.url });
+                                    }
+                                }
                             });
-                            if (stream && !overrideStreams.some(x => x.url === stream.url)) {
-                                // Primeiro verifica se essa URL já existe em detectedStreams (usa nome original)
-                                const existingStream = detectedStreams.find(d => d.url === stream.url);
-                                if (existingStream) {
-                                    overrideStreams.push({ name: existingStream.name, url: stream.url });
-                                    return;
+                        } else {
+                            matchChan.streams.forEach(s => {
+                                if (!overrideStreams.some(x => x.url === s.url)) {
+                                    const existingStream = detectedStreams.find(d => d.url === s.url);
+                                    if (existingStream) {
+                                        overrideStreams.push({ name: existingStream.name, url: s.url });
+                                        return;
+                                    }
+                                    const isEmbedtv = s.url.includes('mr.cloudfronte.lat') || s.url.includes('mr.s27-usa-cloudfront-net.online');
+                                    if (isEmbedtv) {
+                                        overrideStreams.push({ name: `ELITE-${singleName.toUpperCase()}`, url: s.url });
+                                    } else {
+                                        overrideStreams.push({ name: s.name, url: s.url });
+                                    }
                                 }
-                                // Verifica se é stream do EmbedTV
-                                const isEmbedtv = stream.url.includes('mr.cloudfronte.lat') || stream.url.includes('mr.s27-usa-cloudfront-net.online');
-                                if (isEmbedtv) {
-                                    // EmbedTV: nome no formato ELITE-CHANNELNAME (sem qualidade)
-                                    overrideStreams.push({ name: `ELITE-${ovName.toUpperCase()}`, url: stream.url });
-                                } else {
-                                    // Original API: usa o nome original do stream
-                                    overrideStreams.push({ name: stream.name, url: stream.url });
-                                }
-                            }
-                        });
-                    } else {
-                        // Se não especificar qualities, adiciona todos os streams do canal
-                        matchChan.streams.forEach(s => {
-                            if (!overrideStreams.some(x => x.url === s.url)) {
-                                // Primeiro verifica se essa URL já existe em detectedStreams
-                                const existingStream = detectedStreams.find(d => d.url === s.url);
-                                if (existingStream) {
-                                    overrideStreams.push({ name: existingStream.name, url: s.url });
-                                    return;
-                                }
-                                // Verifica se é stream do EmbedTV
-                                const isEmbedtv = s.url.includes('mr.cloudfronte.lat') || s.url.includes('mr.s27-usa-cloudfront-net.online');
-                                if (isEmbedtv) {
-                                    overrideStreams.push({ name: `ELITE-${ovName.toUpperCase()}`, url: s.url });
-                                } else {
-                                    overrideStreams.push({ name: s.name, url: s.url });
-                                }
-                            }
-                        });
-                    }
+                            });
+                        }
+                    });
                 });
 
                 // Se tem override, combina original (mantém nomes) + overrides (ELITE 02, 03...)
@@ -2348,6 +2376,15 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
 
             return n;
         };
+
+        function buildGameId(jogo) {
+            const rawId = String(jogo?.id ?? '').trim();
+            if (rawId) return rawId;
+            const start = String(jogo?.data?.timer?.start ?? '').trim();
+            const titleNorm = normalizeName(jogo?.title || 'jogo');
+            if (start) return `idx_${start}_${titleNorm}`;
+            return `idx_${titleNorm}`;
+        }
 
         function renderHorizontalJogos(jogos, forceRefresh = false) {
             const container = document.getElementById('jogos-section');

@@ -358,8 +358,9 @@ $csrfToken = csrf_token();
         }
 
         .canal-tag.api {
-            background: #dc2626;
-            color: #ffffff;
+            background: rgba(59,130,246,0.14);
+            color: #bfdbfe;
+            border: 1px solid rgba(59,130,246,0.28);
         }
 
         .edit-icon {
@@ -2014,16 +2015,47 @@ $csrfToken = csrf_token();
     const localDateYmd = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const normalizeName = (name = '') => {
         let n = String(name).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-]/g, '').trim();
+        n = n.replace(/([a-z])0+([0-9]+)$/, '$1$2');
         if (n === 'espn' || /^espn0?1$/.test(n)) n = 'espn1';
+        if (/^premiere$/.test(n)) n = 'premiere1';
+        if (/^premiere0?1$/.test(n)) n = 'premiere1';
         if (/premiereclubes|premiereserie/i.test(n)) n = 'premiere1';
         return n;
     };
+
+    function buildGameId(game, fallbackIdx = '') {
+        const rawId = String(game?.id ?? '').trim();
+        if (rawId) return rawId;
+        const start = String(game?.data?.timer?.start ?? '').trim();
+        const titleNorm = normalizeName(game?.title || fallbackIdx || 'jogo');
+        if (start) return `idx_${start}_${titleNorm}`;
+        return `idx_${titleNorm}`;
+    }
+
+    function extractApiPlayerIds(players = []) {
+        return (Array.isArray(players) ? players : [])
+            .flatMap(p => String(decodeURIComponent(String(p || ''))).split(','))
+            .map(v => v.trim())
+            .filter(Boolean)
+            .map(v => {
+                const tail = v.split('/').pop() || v;
+                return tail.split('?')[0].replace(/\.(m3u8|html?)$/i, '').trim();
+            })
+            .filter(Boolean);
+    }
     function parseNomeQualidade(fullName = '') {
         const original = String(fullName).trim();
         const regex = /^(.*?)\s*((?:FHD|HD|SD|4K|1080P|720P|ALT|\*|\[ALT\]|\(ALT\)|\s|-)+)$/i;
         const m = original.match(regex);
         if (m && m[1]) return { baseName: m[1].trim(), quality: m[2].trim().toUpperCase() };
         return { baseName: original, quality: 'PRINCIPAL' };
+    }
+
+    function splitOverrideNames(raw = '') {
+        return String(raw || '')
+            .split(',')
+            .map(v => v.trim())
+            .filter(Boolean);
     }
 
     function upsertCanalCatalogo(nomeCanal, qualidade) {
@@ -2042,6 +2074,40 @@ $csrfToken = csrf_token();
     function getCanalCatalogoByName(nome) {
         const key = normalizeName(nome);
         return catalogoCanais[key] || null;
+    }
+
+    function getCatalogChannelsList() {
+        return Object.values(catalogoCanais || {});
+    }
+
+    function resolveApiChannelCandidates(apiName) {
+        const raw = String(apiName || '').trim();
+        if (!raw) return [];
+
+        const exact = getCanalCatalogoByName(raw);
+        if (exact) return [exact];
+
+        const apiNorm = normalizeName(raw);
+        const all = getCatalogChannelsList();
+
+        if (apiNorm === 'record') {
+            const preferred = all.filter(c => {
+                const n = normalizeName(c.name || '');
+                return n === 'recordsp' || n === 'recordrj' || n.startsWith('record');
+            });
+            if (preferred.length > 0) {
+                preferred.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+                return preferred;
+            }
+        }
+
+        const similar = all.filter(c => {
+            const n = normalizeName(c.name || '');
+            return n.includes(apiNorm) || apiNorm.includes(n);
+        });
+
+        similar.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+        return similar.slice(0, 2);
     }
 
     function getCanalSugestoes(query) {
@@ -2102,19 +2168,19 @@ $csrfToken = csrf_token();
                 return `${String(d.getHours()).padStart(2,'0')}h${String(d.getMinutes()).padStart(2,'0')}`;
             })() : '—');
 
-            const jid       = (j.id !== undefined && j.id !== null && String(j.id).trim() !== '')
-                ? String(j.id)
-                : (j.data?.timer?.start ? `idx_${j.data.timer.start}` : `idx_${normalizeName(j.title || idx)}`);
+            const jid       = buildGameId(j, idx);
             const hasOvr    = !!todosOverrides[jid];
-            const canaisApi = (j.players || []).map(p => {
-                const parts = p.split('/');
-                return parts[parts.length - 1] || p;
-            }).join(', ') || '—';
+            const apiIds = extractApiPlayerIds(j.players);
+            const canaisApi = apiIds.join(', ') || '—';
+            const apiTags = apiIds.length > 0
+                ? apiIds.map(id => `<span class="canal-tag api">${id}</span>`).join('')
+                : '<span class="canal-tag">—</span>';
 
             const ovrTags = hasOvr
                 ? (todosOverrides[jid] || [])
                     .filter(c => String(c?.name || '') !== OVERRIDE_REMOVE_ORIGINAL_KEY)
-                    .map(c => `<span class="canal-tag override">${c.name}</span>`).join('')
+                    .flatMap(c => splitOverrideNames(c.name).map(name => `<span class="canal-tag override">${name}</span>`))
+                    .join('')
                 : '';
 
             return `
@@ -2126,7 +2192,7 @@ $csrfToken = csrf_token();
                     </div>
                     <div class="jogo-canais">
                         <div class="jogo-canal-tags">
-                            ${hasOvr ? `<span class="canal-tag api">${canaisApi}</span>${ovrTags}` : `<span class="canal-tag">${canaisApi}</span>`}
+                            ${hasOvr ? `${apiTags}${ovrTags}` : `${apiTags}`}
                         </div>
                     </div>
                     <svg class="edit-icon" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -2148,26 +2214,19 @@ $csrfToken = csrf_token();
         document.getElementById('modal-jogo-subtitle').textContent =
             `${j.data?.league || ''} • Hoje`.trim();
 
-        const apiIds = (j.players || []).map(p => {
-            const parts = decodeURIComponent(p).split('/').pop() || '';
-            return parts.split('?')[0];
-        }).filter(Boolean);
+        const apiIds = extractApiPlayerIds(j.players);
         const canaisApi = apiIds.join(' | ') || '—';
         document.getElementById('api-canais-lista').textContent = canaisApi;
 
         const originalRaw = apiIds[0] || '';
-        console.log('originalRaw:', originalRaw);
-        const originalCanal = getCanalCatalogoByName(originalRaw) || (originalRaw ? { name: originalRaw, qualities: new Set(['PRINCIPAL']) } : null);
-        console.log('originalCanal:', originalCanal);
+        const originalCandidates = resolveApiChannelCandidates(originalRaw);
+        const originalCanal = originalCandidates[0] || (originalRaw ? { name: originalRaw, qualities: new Set(['PRINCIPAL']) } : null);
 
         const existentes = todosOverrides[jid] || [];
         const originalCfg = existentes.find(c => String(c?.name || '') === OVERRIDE_REMOVE_ORIGINAL_KEY) || {};
 
         const lista = document.getElementById('canais-overrides-list');
         lista.innerHTML = '';
-
-        console.log('apiIds completos:', apiIds);
-        console.log('tem jogoAtual.j.players?', j.players);
 
         if (originalCanal) {
             adicionarCanalInput({
@@ -2179,9 +2238,39 @@ $csrfToken = csrf_token();
             });
         }
 
+        const apiExtraNames = [];
+        apiIds.forEach((apiId, idx) => {
+            const candidates = resolveApiChannelCandidates(apiId);
+            candidates.forEach((c, cidx) => {
+                const cname = String(c?.name || '').trim();
+                if (!cname) return;
+                if (idx === 0 && cidx === 0) return;
+                if (apiExtraNames.includes(cname)) return;
+                apiExtraNames.push(cname);
+                adicionarCanalInput({
+                    name: cname,
+                    qualities: []
+                });
+            });
+        });
+
         existentes
             .filter(c => String(c?.name || '') !== OVERRIDE_REMOVE_ORIGINAL_KEY)
-            .forEach(c => adicionarCanalInput(c));
+            .forEach(c => {
+                const parts = splitOverrideNames(c?.name || '');
+                if (parts.length <= 1) {
+                    adicionarCanalInput(c);
+                    return;
+                }
+                parts.forEach(name => {
+                    adicionarCanalInput({
+                        ...c,
+                        name,
+                        qualities: [],
+                        remove_qualities: []
+                    });
+                });
+            });
 
         document.getElementById('modal-jogo').style.display = 'flex';
     }
@@ -2243,6 +2332,14 @@ $csrfToken = csrf_token();
         const nome = (canal ? canal.name : nomeRaw).replace(/"/g,'&quot;');
         const removeChannel = !!itemData.remove_channel;
 
+        const lista = document.getElementById('canais-overrides-list');
+        const duplicate = [...lista.querySelectorAll('.canal-override-item')].some((el) => {
+            const existingName = String(el.querySelector('.ovr-name')?.value || '').trim();
+            const existingSystem = String(el.querySelector('.ovr-system-name')?.value || '').trim();
+            return normalizeName(existingName) === normalizeName(nomeRaw) && existingSystem === systemName;
+        });
+        if (duplicate) return;
+
         // Support both new 'qualities' (full control) and old 'remove_qualities' (backward compat)
         let qualitiesToLoad = [];
         if (Array.isArray(itemData.qualities) && itemData.qualities.length > 0) {
@@ -2253,7 +2350,6 @@ $csrfToken = csrf_token();
             qualitiesToLoad = canalQualities.filter(q => !itemData.remove_qualities.map(rq => rq.toUpperCase()).includes(q));
         }
 
-        const lista = document.getElementById('canais-overrides-list');
         const item = document.createElement('div');
         item.className = 'canal-override-item';
         item.innerHTML = `
@@ -2315,20 +2411,26 @@ $csrfToken = csrf_token();
                 }
             }
 
-            const canal = getCanalCatalogoByName(rawName);
-            if (!canal) {
-                invalidos.push(rawName);
-                return null;
-            }
+            const names = splitOverrideNames(rawName);
+            if (names.length === 0) return null;
+
+            const validChannels = names.map(name => {
+                const canal = getCanalCatalogoByName(name);
+                if (!canal) invalidos.push(name);
+                return canal;
+            }).filter(Boolean);
+
+            if (validChannels.length === 0) return null;
 
             // CONTROLE TOTAL: se todas qualidades marcadas, não especifica qualities (usa todos)
-            // se algumas desmarcadas, 저장 apenas as marcadas (qualities = controle total)
             const qualities = (checkedQualities.length > 0 && checkedQualities.length < allQualities.length)
                 ? checkedQualities
                 : [];
 
-            return { name: canal.name, remove_channel, qualities };
+            return validChannels.map(canal => ({ name: canal.name, remove_channel, qualities }));
         }).filter(Boolean);
+
+        const canaisFlat = canais.flat();
 
         if (invalidos.length > 0) {
             btn.disabled = false;
@@ -2348,7 +2450,7 @@ $csrfToken = csrf_token();
                 jogo_id:   jogoAtual.jid,
                 titulo:    j.title,
                 data_jogo: dataJogo,
-                canais
+                canais: canaisFlat
             })
         }).then(r=>r.json()).catch(()=>null);
 

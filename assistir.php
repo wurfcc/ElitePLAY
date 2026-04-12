@@ -815,6 +815,15 @@ if (empty($iframe_url)) {
             return n;
         };
 
+        function buildGameId(jogo) {
+            const rawId = String(jogo?.id ?? '').trim();
+            if (rawId) return rawId;
+            const start = String(jogo?.data?.timer?.start ?? '').trim();
+            const titleNorm = normalizeName(jogo?.title || 'jogo');
+            if (start) return `idx_${start}_${titleNorm}`;
+            return `idx_${titleNorm}`;
+        }
+
         function parseChannelName(fullName) {
             const original = String(fullName || '').trim();
             const patterns = [/(?:FHD|HD|SD|4K|1080p|720p)/i, /\[LEG\]/i, /\(ALT\)/i, /\[ALT\]/i, /(?:\s|^)ALT(?:\s|$)/i, /(?:\s|^)\*(?:\s|$)/i];
@@ -862,7 +871,7 @@ if (empty($iframe_url)) {
 
                             if (groupedChannels[norm]) {
                                 if (!groupedChannels[norm].streams.some(s => s.url === m3u8Url)) {
-                                    groupedChannels[norm].streams.push({ name: 'EmbedTV', url: m3u8Url });
+                                    groupedChannels[norm].streams.push({ name: 'EmbedTV', url: m3u8Url, channel_name: c.name });
                                 }
                                 if (!groupedChannels[norm].embedtv_id) groupedChannels[norm].embedtv_id = c.id;
                                 if (!groupedChannels[norm].logo && c.image) groupedChannels[norm].logo = c.image;
@@ -873,7 +882,7 @@ if (empty($iframe_url)) {
                                     categoria: catName,
                                     logo: c.image || '',
                                     embedtv_id: c.id,
-                                    streams: [{ name: 'EmbedTV', url: m3u8Url }]
+                                    streams: [{ name: 'EmbedTV', url: m3u8Url, channel_name: c.name }]
                                 };
                             }
                         });
@@ -903,7 +912,7 @@ if (empty($iframe_url)) {
                             }
 
                             if (c.link && !groupedChannels[norm].streams.some(s => s.url === c.link)) {
-                                groupedChannels[norm].streams.push({ name: parsed.quality || 'Principal', url: c.link });
+                                groupedChannels[norm].streams.push({ name: parsed.quality || 'Principal', url: c.link, channel_name: baseName });
                             }
                         });
                     });
@@ -1084,7 +1093,7 @@ if (empty($iframe_url)) {
                 filteredStreams.forEach((stream, index) => {
                     const btn = document.createElement('button');
                     btn.className = `opt-btn${index === 0 ? ' active' : ''}`;
-                    btn.textContent = index === 0 ? 'ELITE 01' : String(stream?.name || `OPCAO ${index + 1}`).toUpperCase();
+                    btn.textContent = getPlayerOptionLabel(stream, index);
                     btn.addEventListener('click', () => switchDynamicPlayer(String(stream?.url || ''), btn));
                     optionsEl.appendChild(btn);
                 });
@@ -1112,6 +1121,19 @@ if (empty($iframe_url)) {
                 btn3.addEventListener('click', () => switchPlayer(3, btn3));
                 optionsEl.appendChild(btn3);
             }
+        }
+
+        function getPlayerOptionLabel(stream, index) {
+            if (index === 0) return 'ELITE 01';
+
+            const rawName = String(stream?.name || '').trim();
+            if (/^embed\s*tv$/i.test(rawName)) {
+                const channel = String(stream?.channel_name || stream?.channel || '').trim();
+                if (channel) return `ELITE-${channel}`.toUpperCase();
+                return 'ELITE';
+            }
+
+            return String(rawName || `OPCAO ${index + 1}`).toUpperCase();
         }
 
         function updateHeaderTitle(title) {
@@ -1176,9 +1198,7 @@ if (empty($iframe_url)) {
             const originalEmbedTvUrl = jogo.players && jogo.players[0] ? jogo.players[0] : '';
             const playerUrlOpcao1 = originalEmbedTvUrl;
             const safeTitle = String(jogo.title || '').replace(/'/g, "\\'");
-            const jogoId = (jogo.id !== undefined && jogo.id !== null && String(jogo.id).trim() !== '')
-                ? String(jogo.id)
-                : ((jogo.data?.timer?.start ? `idx_${jogo.data.timer.start}` : `idx_${normalizeName(jogo.title)}`));
+            const jogoId = buildGameId(jogo);
             const startTs = Number(jogo.data?.timer?.start || 0);
             const msToStart = startTs > 0 ? (startTs * 1000) - Date.now() : 0;
             const isStartingSoon = !isLive && !isFinished && msToStart > 0 && msToStart <= 60 * 60 * 1000;
@@ -1211,12 +1231,49 @@ if (empty($iframe_url)) {
             const channelsToUse = Array.isArray(assistChannelsForGames) ? assistChannelsForGames : [];
 
             if (channelsToUse.length > 0) {
-                if (originalEmbedTvUrl) {
-                    const urlId = originalEmbedTvUrl.split('/').pop().split('?')[0];
-                    matchedChannel = channelsToUse.find(c => c.embedtv_id === urlId);
+                const apiPlayerIds = (Array.isArray(jogo.players) ? jogo.players : [])
+                    .flatMap(p => String(decodeURIComponent(String(p || ''))).split(','))
+                    .map(v => v.trim())
+                    .filter(Boolean)
+                    .map(v => {
+                        const tail = v.split('/').pop() || v;
+                        return tail.split('?')[0].replace(/\.(m3u8|html?)$/i, '').trim();
+                    })
+                    .filter(Boolean);
+
+                const byApiIdMatches = [];
+                apiPlayerIds.forEach((pid) => {
+                    const pidNorm = normalizeName(pid);
+                    const ch = channelsToUse.find(c => {
+                        const cn = normalizeName(c.nome || '');
+                        if (String(c.embedtv_id || '') === pid) return true;
+                        if (cn === pidNorm || cn.replace(/1$/, '') === pidNorm || pidNorm.replace(/1$/, '') === cn) return true;
+                        const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
+                        const pidSportv = pidNorm.replace(/^sporto(\d+)$/, 'sportv$1');
+                        if (cnSportv === pidNorm || cn === pidSportv || cnSportv === pidSportv) return true;
+                        if (cn.includes(pidNorm) || pidNorm.includes(cn)) return true;
+                        return cn.startsWith(pidNorm) || pidNorm.startsWith(cn);
+                    });
+                    if (ch && !byApiIdMatches.some(x => x.nome === ch.nome)) byApiIdMatches.push(ch);
+                });
+
+                if (byApiIdMatches.length > 0) {
+                    matchedChannel = byApiIdMatches[0];
+                    byApiIdMatches.forEach(ch => {
+                        (Array.isArray(ch.streams) ? ch.streams : []).forEach(s => {
+                            if (!detectedStreams.some(ds => ds.url === s.url)) {
+                                detectedStreams.push({ name: s.name, url: s.url, channel_name: s.channel_name || ch.nome || '' });
+                            }
+                        });
+                    });
                 }
 
-                if (!matchedChannel) {
+                if (originalEmbedTvUrl) {
+                    const urlId = originalEmbedTvUrl.split('/').pop().split('?')[0];
+                    if (!matchedChannel) matchedChannel = channelsToUse.find(c => c.embedtv_id === urlId);
+                }
+
+                if (!matchedChannel && detectedStreams.length === 0) {
                     const gameTitleNorm = normalizeName(jogo.title || '');
                     matchedChannel = channelsToUse.find(c => {
                         const chanNameNorm = normalizeName(c.nome || '');
@@ -1224,7 +1281,7 @@ if (empty($iframe_url)) {
                     });
                 }
 
-                if (!matchedChannel && originalEmbedTvUrl) {
+                if (!matchedChannel && detectedStreams.length === 0 && originalEmbedTvUrl) {
                     let urlId = originalEmbedTvUrl.split('id=').pop().split('&')[0];
                     if (!urlId || urlId.includes('/') || urlId === originalEmbedTvUrl) {
                         urlId = originalEmbedTvUrl.split('?')[0].replace(/\/$/, '').split('/').pop();
@@ -1241,8 +1298,12 @@ if (empty($iframe_url)) {
                     }
                 }
 
-                if (matchedChannel && Array.isArray(matchedChannel.streams) && matchedChannel.streams.length > 0) {
-                    detectedStreams = matchedChannel.streams.slice();
+                if (detectedStreams.length === 0 && matchedChannel && Array.isArray(matchedChannel.streams) && matchedChannel.streams.length > 0) {
+                    detectedStreams = matchedChannel.streams.map(s => ({
+                        name: s.name,
+                        url: s.url,
+                        channel_name: s.channel_name || matchedChannel.nome || ''
+                    }));
                 }
             }
 
@@ -1261,7 +1322,11 @@ if (empty($iframe_url)) {
                         return cnSportv === idNorm || cn === idNormSportv || cnSportv === idNormSportv;
                     });
                     if (matchByUrl && Array.isArray(matchByUrl.streams)) {
-                        detectedStreams = matchByUrl.streams.slice();
+                        detectedStreams = matchByUrl.streams.map(s => ({
+                            name: s.name,
+                            url: s.url,
+                            channel_name: s.channel_name || matchByUrl.nome || ''
+                        }));
                     }
                 }
             }
@@ -1287,53 +1352,63 @@ if (empty($iframe_url)) {
                         return;
                     }
 
-                    const ovNorm = normalizeName(ovName);
-                    const matchChan = channelsToUse.find((c) => {
-                        const cnNorm = normalizeName(c.nome || '');
-                        return cnNorm === ovNorm || ovNorm.includes(cnNorm) || cnNorm.includes(ovNorm) || cnNorm.replace(/[^a-z0-9]/g, '').includes(ovNorm.replace(/[^a-z0-9]/g, ''));
-                    });
+                    const overrideNames = ovName.split(',').map(v => v.trim()).filter(Boolean);
+                    const namesToProcess = overrideNames.length > 0 ? overrideNames : [ovName];
 
-                    if (ov.remove_channel || !matchChan || !Array.isArray(matchChan.streams)) return;
+                    namesToProcess.forEach((singleName) => {
+                        const ovNorm = normalizeName(singleName);
+                        const matchChan = channelsToUse.find((c) => {
+                            const cnNorm = normalizeName(c.nome || '');
+                            return cnNorm === ovNorm || ovNorm.includes(cnNorm) || cnNorm.includes(ovNorm) || cnNorm.replace(/[^a-z0-9]/g, '').includes(ovNorm.replace(/[^a-z0-9]/g, ''));
+                        });
 
-                    if (Array.isArray(ov.qualities) && ov.qualities.length > 0) {
-                        ov.qualities.forEach((q) => {
-                            const qUpper = String(q).toUpperCase();
-                            const stream = matchChan.streams.find((s) => {
-                                const sNameUpper = String(s.name || '').toUpperCase();
-                                return sNameUpper.includes(qUpper) || qUpper.includes(sNameUpper);
+                        if (!matchChan || !Array.isArray(matchChan.streams)) return;
+
+                        if (ov.remove_channel) {
+                            finalStreams = finalStreams.filter(fs => !matchChan.streams.some(ms => ms.url === fs.url));
+                            return;
+                        }
+
+                        if (Array.isArray(ov.qualities) && ov.qualities.length > 0) {
+                            ov.qualities.forEach((q) => {
+                                const qUpper = String(q).toUpperCase();
+                                const stream = matchChan.streams.find((s) => {
+                                    const sNameUpper = String(s.name || '').toUpperCase();
+                                    return sNameUpper.includes(qUpper) || qUpper.includes(sNameUpper);
+                                });
+
+                                if (stream && !overrideStreams.some(x => x.url === stream.url)) {
+                                    const existingStream = detectedStreams.find(d => d.url === stream.url);
+                                    if (existingStream) {
+                                        overrideStreams.push({ name: existingStream.name, url: stream.url, channel_name: existingStream.channel_name || singleName });
+                                        return;
+                                    }
+                                    const isEmbedtv = stream.url.includes('mr.cloudfronte.lat') || stream.url.includes('mr.s27-usa-cloudfront-net.online');
+                                    if (isEmbedtv) {
+                                        overrideStreams.push({ name: `ELITE-${singleName.toUpperCase()}`, url: stream.url, channel_name: singleName });
+                                    } else {
+                                        overrideStreams.push({ name: stream.name, url: stream.url, channel_name: singleName });
+                                    }
+                                }
                             });
-
-                            if (stream && !overrideStreams.some(x => x.url === stream.url)) {
-                                const existingStream = detectedStreams.find(d => d.url === stream.url);
-                                if (existingStream) {
-                                    overrideStreams.push({ name: existingStream.name, url: stream.url });
-                                    return;
+                        } else {
+                            matchChan.streams.forEach((s) => {
+                                if (!overrideStreams.some(x => x.url === s.url)) {
+                                    const existingStream = detectedStreams.find(d => d.url === s.url);
+                                    if (existingStream) {
+                                        overrideStreams.push({ name: existingStream.name, url: s.url, channel_name: existingStream.channel_name || singleName });
+                                        return;
+                                    }
+                                    const isEmbedtv = s.url.includes('mr.cloudfronte.lat') || s.url.includes('mr.s27-usa-cloudfront-net.online');
+                                    if (isEmbedtv) {
+                                        overrideStreams.push({ name: `ELITE-${singleName.toUpperCase()}`, url: s.url, channel_name: singleName });
+                                    } else {
+                                        overrideStreams.push({ name: s.name, url: s.url, channel_name: singleName });
+                                    }
                                 }
-                                const isEmbedtv = stream.url.includes('mr.cloudfronte.lat') || stream.url.includes('mr.s27-usa-cloudfront-net.online');
-                                if (isEmbedtv) {
-                                    overrideStreams.push({ name: `ELITE-${ovName.toUpperCase()}`, url: stream.url });
-                                } else {
-                                    overrideStreams.push({ name: stream.name, url: stream.url });
-                                }
-                            }
-                        });
-                    } else {
-                        matchChan.streams.forEach((s) => {
-                            if (!overrideStreams.some(x => x.url === s.url)) {
-                                const existingStream = detectedStreams.find(d => d.url === s.url);
-                                if (existingStream) {
-                                    overrideStreams.push({ name: existingStream.name, url: s.url });
-                                    return;
-                                }
-                                const isEmbedtv = s.url.includes('mr.cloudfronte.lat') || s.url.includes('mr.s27-usa-cloudfront-net.online');
-                                if (isEmbedtv) {
-                                    overrideStreams.push({ name: `ELITE-${ovName.toUpperCase()}`, url: s.url });
-                                } else {
-                                    overrideStreams.push({ name: s.name, url: s.url });
-                                }
-                            }
-                        });
-                    }
+                            });
+                        }
+                    });
                 });
 
                 if (overrideStreams.length > 0) {
