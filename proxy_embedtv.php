@@ -14,7 +14,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
 $resource = $_GET['resource'] ?? 'jogos';
 
 $allowed = [
-    'jogos' => 'https://embedtv.cv/api/jogos',
+    'jogos' => 'https://embedtv.cv/jogos2.php',
     'channels' => 'https://embedtv.cv/api/channels',
     'epgs' => 'https://embedtv.cv/api/epgs',
 ];

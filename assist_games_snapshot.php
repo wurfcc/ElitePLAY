@@ -270,7 +270,7 @@ function merge_games_with_scores(array $apiGames, array $scrapedScores): array {
 }
 
 function build_snapshot(): ?array {
-    $jogos = fetch_json_array('https://embedtv.cv/api/jogos');
+    $jogos = fetch_json_array('https://embedtv.cv/jogos2.php');
     $placarHtml = fetch_url_text('https://www.placardefutebol.com.br/jogos-de-hoje');
 
     if (!is_array($jogos) || $placarHtml === null) {
