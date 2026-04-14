@@ -280,6 +280,34 @@ if (empty($iframe_url)) {
             gap: 14px;
         }
 
+        .games-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .games-filter-btn {
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.03);
+            color: var(--text-muted);
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s ease;
+        }
+
+        .games-filter-btn.active {
+            color: #ffffff;
+            border-color: rgba(79, 91, 245, 0.62);
+            background: linear-gradient(135deg, rgba(79, 91, 245, 0.24), rgba(37, 99, 235, 0.24));
+            box-shadow: 0 0 0 1px rgba(79, 91, 245, 0.22) inset;
+        }
+
         .game-section-title {
             display: flex;
             align-items: center;
@@ -619,6 +647,15 @@ if (empty($iframe_url)) {
                 max-height: none;
             }
 
+            .games-filters {
+                gap: 6px;
+            }
+
+            .games-filter-btn {
+                font-size: 11px;
+                padding: 6px 10px;
+            }
+
             .card-premium-content {
                 padding: 1rem;
             }
@@ -734,6 +771,13 @@ if (empty($iframe_url)) {
                 <h2>Jogos do Dia</h2>
                 <span class="games-rail-status" id="games-rail-status">Atualizando...</span>
             </div>
+            <div class="games-filters" id="games-filters">
+                <button class="games-filter-btn active" data-filter="all" type="button">Todos</button>
+                <button class="games-filter-btn" data-filter="brasileirao" type="button">Brasileirão</button>
+                <button class="games-filter-btn" data-filter="live" type="button">Ao Vivo</button>
+                <button class="games-filter-btn" data-filter="finished" type="button">Encerrado</button>
+                <button class="games-filter-btn" data-filter="champions" type="button">Champions League</button>
+            </div>
             <div class="games-sections" id="games-sections">
                 <div class="games-list">
                     <div style="padding: 14px; color: var(--text-muted); font-size: 14px; text-align: center;">Carregando jogos...</div>
@@ -758,6 +802,8 @@ if (empty($iframe_url)) {
         let assistChannelsForGames = [];
         let assistAdminOverrides = {};
         let assistMetaLoadingPromise = null;
+        let assistActiveFilter = 'all';
+        let assistScoreCache = {};
 
         const MAIN_CHANNELS_APIS = {
             noticias70: {
@@ -1223,6 +1269,108 @@ if (empty($iframe_url)) {
             return 'upcoming';
         }
 
+        function normalizeFilterText(text) {
+            return String(text || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .trim();
+        }
+
+        function gameMatchesAssistFilter(jogo, filterKey) {
+            if (filterKey === 'all') return true;
+
+            const competition = normalizeFilterText(jogo?.scrapedLeague || jogo?.data?.league || '');
+            const statusType = getAssistGameStatusType(jogo);
+
+            if (filterKey === 'finished') {
+                return statusType === 'finished';
+            }
+
+            if (filterKey === 'live') {
+                return statusType === 'live';
+            }
+
+            if (filterKey === 'brasileirao') {
+                const isBrasileirao = competition.includes('brasileirao') || competition.includes('campeonato brasileiro');
+                const isSerieA = competition.includes('serie a') || competition.includes('serie-a') || competition.includes('série a');
+                return isBrasileirao && isSerieA;
+            }
+
+            if (filterKey === 'champions') {
+                return competition.includes('champions') || competition.includes('liga dos campeoes') || competition.includes('uefa champions');
+            }
+
+            return true;
+        }
+
+        function applyAssistFilter(jogos) {
+            if (!Array.isArray(jogos)) return [];
+            return jogos.filter(j => gameMatchesAssistFilter(j, assistActiveFilter));
+        }
+
+        function updateAssistFilterButtons() {
+            document.querySelectorAll('#games-filters .games-filter-btn').forEach((btn) => {
+                const key = String(btn.getAttribute('data-filter') || 'all');
+                btn.classList.toggle('active', key === assistActiveFilter);
+            });
+        }
+
+        function setAssistFilter(filterKey) {
+            assistActiveFilter = String(filterKey || 'all');
+            updateAssistFilterButtons();
+            renderAssistGames(assistJogos);
+        }
+
+        function mergeAssistScoresWithCache(games) {
+            if (!Array.isArray(games)) return [];
+
+            return games.map((game) => {
+                const id = buildGameId(game);
+                const cache = assistScoreCache[id] || null;
+
+                const homeRaw = String(game?.homeScore ?? '').trim();
+                const awayRaw = String(game?.awayScore ?? '').trim();
+                const hasCurrentScores = homeRaw !== '' && awayRaw !== '' && homeRaw !== '-' && awayRaw !== '-';
+
+                if (hasCurrentScores) {
+                    assistScoreCache[id] = {
+                        homeScore: game.homeScore,
+                        awayScore: game.awayScore,
+                        statusText: game.statusText || game?.data?.time || '',
+                        status_label: game.status_label || ''
+                    };
+                    return game;
+                }
+
+                if (cache) {
+                    return {
+                        ...game,
+                        homeScore: cache.homeScore,
+                        awayScore: cache.awayScore,
+                        statusText: game.statusText || cache.statusText,
+                        status_label: game.status_label || cache.status_label
+                    };
+                }
+
+                return game;
+            });
+        }
+
+        function initAssistFilters() {
+            const wrap = document.getElementById('games-filters');
+            if (!wrap) return;
+
+            wrap.querySelectorAll('.games-filter-btn').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const filterKey = String(btn.getAttribute('data-filter') || 'all');
+                    setAssistFilter(filterKey);
+                });
+            });
+
+            updateAssistFilterButtons();
+        }
+
         function createAssistGameCardHTML(jogo) {
             const homeName = jogo.data?.teams?.home?.name || 'Time A';
             const awayName = jogo.data?.teams?.away?.name || 'Time B';
@@ -1235,8 +1383,12 @@ if (empty($iframe_url)) {
             const isFinished = statusType === 'finished';
             const isInterval = isLive && String(jogo.statusText || '').toLowerCase().includes('int');
             const statusLabel = isFinished ? 'ENCERRADO' : (jogo.statusText || jogo.data?.time || 'HOJE');
-            const homeScore = jogo.homeScore !== undefined ? jogo.homeScore : (isLive || isFinished ? '0' : '');
-            const awayScore = jogo.awayScore !== undefined ? jogo.awayScore : (isLive || isFinished ? '0' : '');
+            const homeScore = (jogo.homeScore !== undefined && jogo.homeScore !== null && String(jogo.homeScore).trim() !== '')
+                ? jogo.homeScore
+                : (isLive || isFinished ? '-' : '');
+            const awayScore = (jogo.awayScore !== undefined && jogo.awayScore !== null && String(jogo.awayScore).trim() !== '')
+                ? jogo.awayScore
+                : (isLive || isFinished ? '-' : '');
             const originalEmbedTvUrl = jogo.players && jogo.players[0] ? jogo.players[0] : '';
             const playerUrlOpcao1 = originalEmbedTvUrl;
             const safeTitle = String(jogo.title || '').replace(/'/g, "\\'");
@@ -1527,22 +1679,23 @@ if (empty($iframe_url)) {
         }
 
         function renderAssistGames(jogos) {
-            const statusEl = document.getElementById('games-rail-status');
             const container = document.getElementById('games-sections');
             if (!container) return;
-
-            if (statusEl) {
-                statusEl.textContent = 'Atualizado agora';
-            }
 
             if (!Array.isArray(jogos) || jogos.length === 0) {
                 container.innerHTML = '<div style="padding: 14px; color: var(--text-muted); text-align:center;">Nenhum jogo encontrado hoje.</div>';
                 return;
             }
 
-            const live = jogos.filter(j => getAssistGameStatusType(j) === 'live');
-            const upcoming = jogos.filter(j => getAssistGameStatusType(j) === 'upcoming');
-            const finished = jogos.filter(j => getAssistGameStatusType(j) === 'finished');
+            const filteredJogos = applyAssistFilter(jogos);
+            if (filteredJogos.length === 0) {
+                container.innerHTML = '<div style="padding: 14px; color: var(--text-muted); text-align:center;">Nenhum jogo encontrado para este filtro.</div>';
+                return;
+            }
+
+            const live = filteredJogos.filter(j => getAssistGameStatusType(j) === 'live');
+            const upcoming = filteredJogos.filter(j => getAssistGameStatusType(j) === 'upcoming');
+            const finished = filteredJogos.filter(j => getAssistGameStatusType(j) === 'finished');
 
             const renderSection = (title, list) => {
                 if (!list.length) return '';
@@ -1556,7 +1709,8 @@ if (empty($iframe_url)) {
                     </section>`;
             };
 
-            container.innerHTML = renderSection('Ao Vivo Agora', live) + renderSection('Próximos Jogos', upcoming) + renderSection('Jogos Encerrados', finished);
+            const html = renderSection('Ao Vivo Agora', live) + renderSection('Próximos Jogos', upcoming) + renderSection('Jogos Encerrados', finished);
+            container.innerHTML = html || '<div style="padding: 14px; color: var(--text-muted); text-align:center;">Nenhum jogo encontrado para este filtro.</div>';
         }
 
         async function loadAssistGames() {
@@ -1590,6 +1744,8 @@ if (empty($iframe_url)) {
                     }
                 }
 
+                assistJogos = mergeAssistScoresWithCache(assistJogos);
+
                 renderAssistGames(assistJogos);
 
                 if (statusEl) {
@@ -1613,7 +1769,8 @@ if (empty($iframe_url)) {
 
                     assistJogos = Array.isArray(jogosRes) ? jogosRes : [];
                     assistLastScores = scraped;
-                    renderAssistGames(matchAssistGameScores(assistJogos, assistLastScores));
+                    assistJogos = mergeAssistScoresWithCache(matchAssistGameScores(assistJogos, assistLastScores));
+                    renderAssistGames(assistJogos);
 
                     if (statusEl) statusEl.textContent = 'Atualizado agora';
                 } catch (fallbackError) {
@@ -1734,6 +1891,7 @@ if (empty($iframe_url)) {
             activeCredentials = await fetchCredentials();
 
             if (isGameContext) {
+                initAssistFilters();
                 loadAssistGames();
                 setInterval(loadAssistGames, 15000);
             }
