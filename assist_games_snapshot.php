@@ -180,7 +180,6 @@ function parse_placar_html(string $html): array {
 
 function merge_games_with_scores(array $apiGames, array $scrapedScores): array {
     $merged = [];
-    $todayYmd = date('Y-m-d');
 
     foreach ($apiGames as $game) {
         if (!is_array($game)) {
@@ -192,19 +191,32 @@ function merge_games_with_scores(array $apiGames, array $scrapedScores): array {
         $homeSlug = slugify_name($homeName);
         $awaySlug = slugify_name($awayName);
         $startTs = (int)($game['data']['timer']['start'] ?? 0);
-        $gameYmd = $startTs > 0 ? date('Y-m-d', $startTs) : '';
-        $isTodayGame = $gameYmd !== '' && $gameYmd === $todayYmd;
+        $nowTs = time();
 
         $match = null;
-        if ($isTodayGame) {
-            foreach ($scrapedScores as $row) {
-                $lsHome = slugify_name((string)($row['homeTeam'] ?? ''));
-                $lsAway = slugify_name((string)($row['awayTeam'] ?? ''));
-                $homeOk = strlen($homeSlug) > 2 && $lsHome !== '' && ($lsHome === $homeSlug || str_contains($lsHome, $homeSlug) || str_contains($homeSlug, $lsHome));
-                $awayOk = strlen($awaySlug) > 2 && $lsAway !== '' && ($lsAway === $awaySlug || str_contains($lsAway, $awaySlug) || str_contains($awaySlug, $lsAway));
-                if ($homeOk && $awayOk) {
-                    $match = $row;
-                    break;
+        foreach ($scrapedScores as $row) {
+            $lsHome = slugify_name((string)($row['homeTeam'] ?? ''));
+            $lsAway = slugify_name((string)($row['awayTeam'] ?? ''));
+            $homeOk = strlen($homeSlug) > 2 && $lsHome !== '' && ($lsHome === $homeSlug || str_contains($lsHome, $homeSlug) || str_contains($homeSlug, $lsHome));
+            $awayOk = strlen($awaySlug) > 2 && $lsAway !== '' && ($lsAway === $awaySlug || str_contains($lsAway, $awaySlug) || str_contains($awaySlug, $lsAway));
+            if ($homeOk && $awayOk) {
+                $match = $row;
+                break;
+            }
+        }
+
+        if (!is_array($match)) {
+            $withinReasonableWindow = $startTs <= 0 || ($startTs >= ($nowTs - 12 * 3600) && $startTs <= ($nowTs + 6 * 3600));
+            if ($withinReasonableWindow) {
+                foreach ($scrapedScores as $row) {
+                    $lsHome = slugify_name((string)($row['homeTeam'] ?? ''));
+                    $lsAway = slugify_name((string)($row['awayTeam'] ?? ''));
+                    $homeOk = strlen($homeSlug) > 3 && $lsHome !== '' && (str_contains($lsHome, $homeSlug) || str_contains($homeSlug, $lsHome));
+                    $awayOk = strlen($awaySlug) > 3 && $lsAway !== '' && (str_contains($lsAway, $awaySlug) || str_contains($awaySlug, $lsAway));
+                    if ($homeOk || $awayOk) {
+                        $match = $row;
+                        break;
+                    }
                 }
             }
         }

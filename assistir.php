@@ -1003,7 +1003,6 @@ if (empty($iframe_url)) {
         }
 
         function matchAssistGameScores(apiGames, scrapedScores) {
-            const todayYmd = localDateYmd();
             return apiGames.map(game => {
                 const homeName = game.data?.teams?.home?.name || '';
                 const awayName = game.data?.teams?.away?.name || '';
@@ -1011,18 +1010,28 @@ if (empty($iframe_url)) {
                 const awaySlug = slugify(awayName);
 
                 const startTs = Number(game.data?.timer?.start || 0);
-                const gameYmd = startTs > 0 ? localDateYmd(new Date(startTs * 1000)) : '';
-                const isTodayGame = gameYmd && gameYmd === todayYmd;
+                const nowTs = Math.floor(Date.now() / 1000);
 
                 let match = null;
-                if (isTodayGame) {
-                    match = scrapedScores.find(ls => {
-                        const lsHomeSlug = slugify(ls.homeTeam);
-                        const lsAwaySlug = slugify(ls.awayTeam);
-                        const homeMatch = homeSlug.length > 2 && lsHomeSlug && (lsHomeSlug.includes(homeSlug) || homeSlug.includes(lsHomeSlug));
-                        const awayMatch = awaySlug.length > 2 && lsAwaySlug && (lsAwaySlug.includes(awaySlug) || awaySlug.includes(lsAwaySlug));
-                        return homeMatch && awayMatch;
-                    }) || null;
+                match = scrapedScores.find(ls => {
+                    const lsHomeSlug = slugify(ls.homeTeam);
+                    const lsAwaySlug = slugify(ls.awayTeam);
+                    const homeMatch = homeSlug.length > 2 && lsHomeSlug && (lsHomeSlug.includes(homeSlug) || homeSlug.includes(lsHomeSlug));
+                    const awayMatch = awaySlug.length > 2 && lsAwaySlug && (lsAwaySlug.includes(awaySlug) || awaySlug.includes(lsAwaySlug));
+                    return homeMatch && awayMatch;
+                }) || null;
+
+                if (!match) {
+                    const withinReasonableWindow = !startTs || (startTs >= (nowTs - 12 * 3600) && startTs <= (nowTs + 6 * 3600));
+                    if (withinReasonableWindow) {
+                        match = scrapedScores.find(ls => {
+                            const lsHomeSlug = slugify(ls.homeTeam);
+                            const lsAwaySlug = slugify(ls.awayTeam);
+                            const homeMatch = homeSlug.length > 3 && lsHomeSlug && (lsHomeSlug.includes(homeSlug) || homeSlug.includes(lsHomeSlug));
+                            const awayMatch = awaySlug.length > 3 && lsAwaySlug && (lsAwaySlug.includes(awaySlug) || awaySlug.includes(lsAwaySlug));
+                            return homeMatch || awayMatch;
+                        }) || null;
+                    }
                 }
 
                 const apiStatusLabel = String(game.status_label || '').toLowerCase();
@@ -1195,6 +1204,25 @@ if (empty($iframe_url)) {
             });
         }
 
+        function getAssistGameStatusType(jogo) {
+            const statusLabel = String(jogo?.status_label || '').toLowerCase();
+            const statusText = String(jogo?.statusText || jogo?.data?.time || '').toLowerCase();
+            const startTs = Number(jogo?.data?.timer?.start || 0);
+            const nowTs = Math.floor(Date.now() / 1000);
+
+            if (statusLabel.includes('encerr') || statusLabel.includes('final') || statusLabel.includes('fim')) return 'finished';
+            if (statusText.includes('encerr') || statusText.includes('final') || statusText.includes('fim')) return 'finished';
+
+            if (startTs > 0 && startTs < (nowTs - 3 * 60 * 60) && !statusLabel.includes('ao vivo') && !statusText.includes('vivo')) {
+                return 'finished';
+            }
+
+            if (statusLabel.includes('ao vivo') || statusLabel.includes('vivo')) return 'live';
+            if (statusText.includes("'") || statusText.includes('min') || statusText.includes('vivo') || statusText.includes('andamento') || statusText.includes('1t') || statusText.includes('2t') || statusText.includes('int')) return 'live';
+
+            return 'upcoming';
+        }
+
         function createAssistGameCardHTML(jogo) {
             const homeName = jogo.data?.teams?.home?.name || 'Time A';
             const awayName = jogo.data?.teams?.away?.name || 'Time B';
@@ -1202,8 +1230,9 @@ if (empty($iframe_url)) {
             const awayLogo = jogo.data?.teams?.away?.image || getTeamLogoUrl(awayName);
             const homeInitials = getInitials(homeName);
             const awayInitials = getInitials(awayName);
-            const isLive = jogo.status_label === 'Ao Vivo';
-            const isFinished = jogo.status_label === 'Encerrado';
+            const statusType = getAssistGameStatusType(jogo);
+            const isLive = statusType === 'live';
+            const isFinished = statusType === 'finished';
             const isInterval = isLive && String(jogo.statusText || '').toLowerCase().includes('int');
             const statusLabel = isFinished ? 'ENCERRADO' : (jogo.statusText || jogo.data?.time || 'HOJE');
             const homeScore = jogo.homeScore !== undefined ? jogo.homeScore : (isLive || isFinished ? '0' : '');
@@ -1511,9 +1540,9 @@ if (empty($iframe_url)) {
                 return;
             }
 
-            const live = jogos.filter(j => j.status_label === 'Ao Vivo');
-            const upcoming = jogos.filter(j => j.status_label === 'Agendado');
-            const finished = jogos.filter(j => j.status_label === 'Encerrado');
+            const live = jogos.filter(j => getAssistGameStatusType(j) === 'live');
+            const upcoming = jogos.filter(j => getAssistGameStatusType(j) === 'upcoming');
+            const finished = jogos.filter(j => getAssistGameStatusType(j) === 'finished');
 
             const renderSection = (title, list) => {
                 if (!list.length) return '';
@@ -1542,6 +1571,25 @@ if (empty($iframe_url)) {
                     .then(r => r.ok ? r.json() : Promise.reject(new Error('snapshot-error')));
 
                 assistJogos = Array.isArray(payload?.games) ? payload.games : [];
+
+                const hasMissingFinishedScore = assistJogos.some((j) => {
+                    const statusType = getAssistGameStatusType(j);
+                    if (statusType !== 'finished') return false;
+                    const hs = String(j?.homeScore ?? '').trim();
+                    const as = String(j?.awayScore ?? '').trim();
+                    return hs === '' || as === '' || hs === '-' || as === '-';
+                });
+
+                if (hasMissingFinishedScore) {
+                    try {
+                        assistLastScores = await fetchAssistLiveScores();
+                        if (Array.isArray(assistLastScores) && assistLastScores.length > 0) {
+                            assistJogos = matchAssistGameScores(assistJogos, assistLastScores);
+                        }
+                    } catch (enrichError) {
+                    }
+                }
+
                 renderAssistGames(assistJogos);
 
                 if (statusEl) {
