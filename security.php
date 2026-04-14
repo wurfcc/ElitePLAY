@@ -32,13 +32,17 @@ if (!defined('RATE_BLOQUEIO_MINUTOS')) {
 
 // --- Configuração de sessão segura (deve ser chamada ANTES de session_start) ---
 function configurar_sessao(): void {
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+        ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443) ||
+        (strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https');
+
     $params = [
         'lifetime' => 0,               // Morre ao fechar o navegador (TTL controlado no BD)
         'path'     => '/',
         'domain'   => '',
-        'secure'   => PRODUCAO,        // Só HTTPS em produção
+        'secure'   => $isHttps,        // HTTPS real da requisição
         'httponly' => true,            // Inacessível via JavaScript
-        'samesite' => 'Strict',        // Evita CSRF via cookies
+        'samesite' => 'Lax',           // Compatível com iOS/WebKit em fluxos de login
     ];
 
     session_set_cookie_params($params);
@@ -65,11 +69,15 @@ function auth_cookie_domain(): string {
 }
 
 function auth_cookie_options(int $expiresAt): array {
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+        ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443) ||
+        (strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https');
+
     return [
         'expires' => $expiresAt,
         'path' => '/',
-        'domain' => PRODUCAO ? auth_cookie_domain() : '',
-        'secure' => PRODUCAO,
+        'domain' => '',
+        'secure' => $isHttps,
         'httponly' => true,
         'samesite' => 'Lax',
     ];

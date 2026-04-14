@@ -16,6 +16,7 @@ $csrf = csrf_token();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ElitePLAY - Entrar</title>
+    <link rel="icon" type="image/webp" href="assets/favicon.webp">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
@@ -511,6 +512,27 @@ $csrf = csrf_token();
     <script>
         let isSubmitting = false;
         let isRegSubmitting = false;
+        const LOGIN_EMAIL_STORAGE_KEY = 'eliteplay_last_login_email';
+
+        function saveLastLoginEmail(email) {
+            const normalized = String(email || '').trim().toLowerCase();
+            if (!normalized) return;
+            try {
+                localStorage.setItem(LOGIN_EMAIL_STORAGE_KEY, normalized);
+            } catch (e) {}
+        }
+
+        function restoreLastLoginEmail() {
+            const input = document.getElementById('email');
+            if (!input || String(input.value || '').trim() !== '') return;
+
+            try {
+                const stored = localStorage.getItem(LOGIN_EMAIL_STORAGE_KEY) || '';
+                if (stored && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(stored)) {
+                    input.value = stored;
+                }
+            } catch (e) {}
+        }
 
         function switchTab(tab) {
             const isLogin = tab === 'login';
@@ -624,6 +646,7 @@ $csrf = csrf_token();
                 if (response) {
                     const data = await response.json().catch(() => null);
                     if (response.ok && data && data.success) {
+                        saveLastLoginEmail(email);
                         if (successMsg && data.message) successMsg.textContent = data.message;
                         alertSuccess.classList.add('show');
                         const nextUrl = data.redirect || 'index.php';
@@ -659,6 +682,8 @@ $csrf = csrf_token();
             const successMsg = document.querySelector('#alert-success strong');
             if (successMsg) successMsg.textContent = 'Acesso autorizado! Redirecionando...';
         });
+
+        restoreLastLoginEmail();
     </script>
 
 </body>

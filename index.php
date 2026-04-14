@@ -17,6 +17,7 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ElitePLAY - Canais ao Vivo</title>
+    <link rel="icon" type="image/webp" href="assets/favicon.webp">
     <link rel="stylesheet" href="assets/fonts/outfit/outfit.css">
     <style>
         :root {
@@ -1300,6 +1301,31 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
     <!-- Conteúdo Principal -->
     <div class="main-content">
         <?php
+        $defaultBannerImage = 'imagens/elitelogo.webp';
+        $defaultBannerAbsolute = __DIR__ . '/' . $defaultBannerImage;
+        $defaultBannerWithVersion = is_file($defaultBannerAbsolute)
+            ? ($defaultBannerImage . '?v=' . (string)@filemtime($defaultBannerAbsolute))
+            : $defaultBannerImage;
+
+        $resolveBannerImagePath = static function ($rawPath) use ($defaultBannerWithVersion): string {
+            $path = trim((string)$rawPath);
+            if ($path === '') {
+                return $defaultBannerWithVersion;
+            }
+
+            if (preg_match('/^https?:\/\//i', $path) === 1) {
+                return $path;
+            }
+
+            $normalizedPath = ltrim($path, '/');
+            $absolutePath = __DIR__ . '/' . $normalizedPath;
+            if (!is_file($absolutePath)) {
+                return $defaultBannerWithVersion;
+            }
+
+            return $normalizedPath . '?v=' . (string)@filemtime($absolutePath);
+        };
+
         $homeBannerSlides = [];
         foreach ($homeBanners as $slide) {
             $desktopImage = trim((string)($slide['desktop_image'] ?? ''));
@@ -1312,31 +1338,31 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
             }
 
             if ($desktopImage === '' && $mobileImage === '') {
-                $desktopImage = 'imagens/elitelogo.webp';
-                $mobileImage = 'imagens/elitelogo.webp';
+                $desktopImage = $defaultBannerWithVersion;
+                $mobileImage = $defaultBannerWithVersion;
             }
 
             $homeBannerSlides[] = [
                 'link' => trim((string)($slide['link'] ?? '')),
-                'desktop_image' => $desktopImage,
-                'mobile_image' => $mobileImage,
+                'desktop_image' => $resolveBannerImagePath($desktopImage),
+                'mobile_image' => $resolveBannerImagePath($mobileImage),
             ];
         }
         ?>
         <?php if ($isHomeCarouselEnabled && !empty($homeBannerSlides)): ?>
         <div class="home-banner-carousel" id="home-banner-carousel">
             <div class="home-banner-track" id="home-banner-track">
-                <?php foreach ($homeBannerSlides as $slide): ?>
+                <?php foreach ($homeBannerSlides as $slideIndex => $slide): ?>
                 <?php
                 $slideLink = trim((string)($slide['link'] ?? ''));
-                $desktopImage = (string)($slide['desktop_image'] ?? 'imagens/elitelogo.webp');
-                $mobileImage = (string)($slide['mobile_image'] ?? 'imagens/elitelogo.webp');
+                $desktopImage = (string)($slide['desktop_image'] ?? $defaultBannerWithVersion);
+                $mobileImage = (string)($slide['mobile_image'] ?? $defaultBannerWithVersion);
                 $openNewTab = preg_match('/^https?:\/\//i', $slideLink) === 1;
                 ?>
                 <a class="home-banner-slide" href="<?php echo $slideLink !== '' ? htmlspecialchars($slideLink, ENT_QUOTES, 'UTF-8') : '#'; ?>"<?php echo $slideLink !== '' ? ($openNewTab ? ' target="_blank" rel="noopener noreferrer"' : '') : ' onclick="return false;"'; ?>>
                     <picture>
                         <source media="(max-width: 768px)" srcset="<?php echo htmlspecialchars($mobileImage, ENT_QUOTES, 'UTF-8'); ?>">
-                        <img src="<?php echo htmlspecialchars($desktopImage, ENT_QUOTES, 'UTF-8'); ?>" alt="Banner ElitePLAY" loading="lazy">
+                        <img src="<?php echo htmlspecialchars($desktopImage, ENT_QUOTES, 'UTF-8'); ?>" alt="Banner ElitePLAY" loading="<?php echo $slideIndex === 0 ? 'eager' : 'lazy'; ?>" fetchpriority="<?php echo $slideIndex === 0 ? 'high' : 'auto'; ?>" decoding="async" onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='<?php echo htmlspecialchars($defaultBannerWithVersion, ENT_QUOTES, 'UTF-8'); ?>';}">
                     </picture>
                 </a>
                 <?php endforeach; ?>

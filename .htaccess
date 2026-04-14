@@ -1,0 +1,10 @@
+RewriteEngine On
+
+# Favicon global para todo o site
+RewriteRule ^favicon\.ico$ assets/favicon.webp [L]
+
+<IfModule mod_headers.c>
+    <Files "favicon.webp">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </Files>
+</IfModule>

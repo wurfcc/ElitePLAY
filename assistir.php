@@ -41,6 +41,7 @@ if (empty($iframe_url)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><?php echo htmlspecialchars($title); ?> - ElitePLAY</title>
+    <link rel="icon" type="image/webp" href="assets/favicon.webp">
     <link rel="stylesheet" href="assets/fonts/outfit/outfit.css">
     <!-- JWPlayer Script -->
     <script src="https://ssl.p.jwpcdn.com/player/v/8.6.3/jwplayer.js"></script>
@@ -845,9 +846,14 @@ if (empty($iframe_url)) {
             assistMetaLoadingPromise = (async () => {
                 try {
                     const sourceCfg = getAssistChannelsSourceConfig();
-                    const [resEmbed, resMain, overridesRes] = await Promise.all([
+                    const secondarySource = sourceCfg.key === MAIN_CHANNELS_APIS.noticias70.key
+                        ? MAIN_CHANNELS_APIS.bugoumods
+                        : MAIN_CHANNELS_APIS.noticias70;
+
+                    const [resEmbed, resMainPrimary, resMainSecondary, overridesRes] = await Promise.all([
                         fetch('proxy_embedtv.php?resource=channels', { cache: 'no-store' }).then(r => r.json()).catch(() => null),
-                        fetch(sourceCfg.url, { cache: 'no-store' }).then(r => r.json()).catch(() => ({})),
+                        fetch(`${sourceCfg.url}&_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => ({})),
+                        fetch(`${secondarySource.url}&_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => ({})),
                         fetch(`admin_api.php?action=get_overrides&data=${localDateYmd()}&_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => ({}))
                     ]);
 
@@ -888,34 +894,41 @@ if (empty($iframe_url)) {
                         });
                     }
 
-                    Object.keys(resMain || {}).forEach((category) => {
-                        const canais = resMain[category];
-                        if (!Array.isArray(canais)) return;
+                    const mergeMainSource = (resMain) => {
+                        if (!resMain || typeof resMain !== 'object') return;
 
-                        canais.forEach((c) => {
-                            const parsed = parseChannelName(c.nome);
-                            const baseName = parsed.baseName || c.nome;
-                            const norm = normalizeName(baseName);
+                        Object.keys(resMain).forEach((category) => {
+                            const canais = resMain[category];
+                            if (!Array.isArray(canais)) return;
 
-                            if (!groupedChannels[norm]) {
-                                groupedChannels[norm] = {
-                                    nome: baseName,
-                                    iframe_url: c.link,
-                                    categoria: c.categoria || category || 'Outros',
-                                    logo: c.capa || '',
-                                    streams: []
-                                };
-                            } else {
-                                groupedChannels[norm].nome = baseName || groupedChannels[norm].nome;
-                                groupedChannels[norm].iframe_url = c.link || groupedChannels[norm].iframe_url;
-                                if (c.capa) groupedChannels[norm].logo = c.capa;
-                            }
+                            canais.forEach((c) => {
+                                const parsed = parseChannelName(c.nome);
+                                const baseName = parsed.baseName || c.nome;
+                                const norm = normalizeName(baseName);
 
-                            if (c.link && !groupedChannels[norm].streams.some(s => s.url === c.link)) {
-                                groupedChannels[norm].streams.push({ name: parsed.quality || 'Principal', url: c.link, channel_name: baseName });
-                            }
+                                if (!groupedChannels[norm]) {
+                                    groupedChannels[norm] = {
+                                        nome: baseName,
+                                        iframe_url: c.link,
+                                        categoria: c.categoria || category || 'Outros',
+                                        logo: c.capa || '',
+                                        streams: []
+                                    };
+                                } else {
+                                    groupedChannels[norm].nome = baseName || groupedChannels[norm].nome;
+                                    groupedChannels[norm].iframe_url = c.link || groupedChannels[norm].iframe_url;
+                                    if (c.capa) groupedChannels[norm].logo = c.capa;
+                                }
+
+                                if (c.link && !groupedChannels[norm].streams.some(s => s.url === c.link)) {
+                                    groupedChannels[norm].streams.push({ name: parsed.quality || 'Principal', url: c.link, channel_name: baseName });
+                                }
+                            });
                         });
-                    });
+                    };
+
+                    mergeMainSource(resMainPrimary);
+                    mergeMainSource(resMainSecondary);
 
                     assistChannelsForGames = Object.values(groupedChannels).filter(c => Array.isArray(c.streams) && c.streams.length > 0);
                     assistAdminOverrides = (overridesRes && typeof overridesRes === 'object') ? overridesRes : {};
@@ -1417,6 +1430,11 @@ if (empty($iframe_url)) {
             }
 
             finalStreams = finalStreams.filter((s) => !isH265Stream(s));
+
+            finalStreams = finalStreams.filter((s) => String(s?.url || '').trim() !== '').filter((s, idx, arr) => {
+                const url = String(s.url || '').trim();
+                return arr.findIndex(x => String(x.url || '').trim() === url) === idx;
+            });
 
             if (finalStreams.length > 0) {
                 try {

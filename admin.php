@@ -26,6 +26,7 @@ $csrfToken = csrf_token();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ElitePLAY — Admin</title>
+    <link rel="icon" type="image/webp" href="assets/favicon.webp">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -2088,18 +2089,11 @@ $csrfToken = csrf_token();
         if (exact) return [exact];
 
         const apiNorm = normalizeName(raw);
-        const all = getCatalogChannelsList();
-
         if (apiNorm === 'record') {
-            const preferred = all.filter(c => {
-                const n = normalizeName(c.name || '');
-                return n === 'recordsp' || n === 'recordrj' || n.startsWith('record');
-            });
-            if (preferred.length > 0) {
-                preferred.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-                return preferred;
-            }
+            return [];
         }
+
+        const all = getCatalogChannelsList();
 
         const similar = all.filter(c => {
             const n = normalizeName(c.name || '');
