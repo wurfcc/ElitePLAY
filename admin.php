@@ -2015,12 +2015,15 @@ $csrfToken = csrf_token();
     const OVERRIDE_REMOVE_ORIGINAL_KEY = '__ORIGINAL_API__';
     const localDateYmd = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const normalizeName = (name = '') => {
-        let n = String(name).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-]/g, '').trim();
+        let n = String(name).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-]/g, '').replace(/\+/g, 'plus').trim();
         n = n.replace(/([a-z])0+([0-9]+)$/, '$1$2');
         if (n === 'espn' || /^espn0?1$/.test(n)) n = 'espn1';
         if (/^premiere$/.test(n)) n = 'premiere1';
         if (/^premiere0?1$/.test(n)) n = 'premiere1';
         if (/premiereclubes|premiereserie/i.test(n)) n = 'premiere1';
+        if (/^paramountplus$/.test(n) || /^paramount1$/.test(n)) n = 'paramountplus1';
+        if (/^paramountplus1$/.test(n)) n = 'paramountplus1';
+        if (/^paramountplus2$/.test(n) || /^paramount2$/.test(n)) n = 'paramountplus2';
         return n;
     };
 

@@ -1847,16 +1847,10 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                 const byApiIdMatches = [];
                 apiPlayerIds.forEach((pid) => {
                     const pidNorm = normalizeName(pid);
-                    const ch = channelsToUse.find(c => {
-                        const cn = normalizeName(c.nome || '');
-                        if (String(c.embedtv_id || '') === pid) return true;
-                        if (cn === pidNorm || cn.replace(/1$/, '') === pidNorm || pidNorm.replace(/1$/, '') === cn) return true;
-                        const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
-                        const pidSportv = pidNorm.replace(/^sporto(\d+)$/, 'sportv$1');
-                        if (cnSportv === pidNorm || cn === pidSportv || cnSportv === pidSportv) return true;
-                        if (cn.includes(pidNorm) || pidNorm.includes(cn)) return true;
-                        return cn.startsWith(pidNorm) || pidNorm.startsWith(cn);
-                    });
+                    const ch = channelsToUse
+                        .map(c => ({ c, score: scoreChannelMatch(c, pid, pidNorm) }))
+                        .filter(item => item.score >= 0)
+                        .sort((a, b) => b.score - a.score)[0]?.c || null;
                     if (ch && !byApiIdMatches.some(x => x.nome === ch.nome)) byApiIdMatches.push(ch);
                 });
 
@@ -1891,13 +1885,10 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                     }
                     if (urlId) {
                         const idNorm = normalizeName(urlId);
-                        matchedChannel = channelsToUse.find(c => {
-                            const cn = normalizeName(c.nome);
-                            if (cn === idNorm || cn.replace(/1$/, '') === idNorm || idNorm.replace(/1$/, '') === cn) return true;
-                            const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
-                            const idNormSportv = idNorm.replace(/^sporto(\d+)$/, 'sportv$1');
-                            return cnSportv === idNorm || cn === idNormSportv || cnSportv === idNormSportv;
-                        });
+                        matchedChannel = channelsToUse
+                            .map(c => ({ c, score: scoreChannelMatch(c, urlId, idNorm) }))
+                            .filter(item => item.score >= 0)
+                            .sort((a, b) => b.score - a.score)[0]?.c || null;
                     }
                 }
 
@@ -1914,14 +1905,10 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                 }
                 if (urlId) {
                     const idNorm = normalizeName(urlId);
-                    const matchByUrl = channelsToUse.find(c => {
-                        const cn = normalizeName(c.nome);
-                        if (cn === idNorm || cn.replace(/1$/, '') === idNorm || idNorm.replace(/1$/, '') === cn) return true;
-                        // Tratamento especial para SporTV X: "sportoX" = "sportvX"
-                        const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
-                        const idNormSportv = idNorm.replace(/^sporto(\d+)$/, 'sportv$1');
-                        return cnSportv === idNorm || cn === idNormSportv || cnSportv === idNormSportv;
-                    });
+                    const matchByUrl = channelsToUse
+                        .map(c => ({ c, score: scoreChannelMatch(c, urlId, idNorm) }))
+                        .filter(item => item.score >= 0)
+                        .sort((a, b) => b.score - a.score)[0]?.c || null;
                     if (matchByUrl && matchByUrl.streams) {
                         detectedStreams = matchByUrl.streams.slice();
                     }
@@ -2374,7 +2361,12 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
 
         // Função auxiliar para comparar nomes (remove espaços, traços, deixa tudo minúsculo e iguala canais base ao canal 1)
         const normalizeName = (name) => {
-            let n = name.toLowerCase().replace(/[\s\-]/g, '');
+            let n = String(name || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[\s\-]/g, '')
+                .replace(/\+/g, 'plus');
 
             // Tratamento especial para unificar canais do BBB ("BBB 26 CAM 01" com "BBB - 1", etc)
             if (n.startsWith('bbb')) {
@@ -2400,8 +2392,49 @@ $isHomeCarouselEnabled = !isset($homeBannersSettings['enabled']) || (bool)$homeB
                 n = n.replace(/1$/i, '');
             }
 
+            if (/^paramountplus$/.test(n) || /^paramount1$/.test(n)) {
+                n = 'paramountplus1';
+            }
+            if (/^paramountplus1$/.test(n)) {
+                n = 'paramountplus1';
+            }
+            if (/^paramountplus2$/.test(n) || /^paramount2$/.test(n)) {
+                n = 'paramountplus2';
+            }
+
             return n;
         };
+
+        function splitBaseAndNumber(value) {
+            const m = String(value || '').match(/^(.*?)(\d+)$/);
+            if (!m) return { base: String(value || ''), num: '' };
+            return { base: m[1], num: m[2] };
+        }
+
+        function scoreChannelMatch(c, pidRaw, pidNorm) {
+            const cn = normalizeName(c?.nome || '');
+            if (!cn || !pidNorm) return -1;
+
+            if (String(c?.embedtv_id || '') === String(pidRaw || '')) return 1000;
+            if (cn === pidNorm) return 900;
+
+            const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
+            const pidSportv = pidNorm.replace(/^sporto(\d+)$/, 'sportv$1');
+            if (cnSportv === pidNorm || cn === pidSportv || cnSportv === pidSportv) return 850;
+
+            const pidParts = splitBaseAndNumber(pidNorm);
+            const cnParts = splitBaseAndNumber(cn);
+
+            if (pidParts.num !== '') {
+                if (cnParts.base === pidParts.base && cnParts.num === pidParts.num) return 840;
+                if (cn === pidParts.base) return 120;
+            }
+
+            if (cn.includes(pidNorm) || pidNorm.includes(cn)) return 400;
+            if (cn.startsWith(pidNorm) || pidNorm.startsWith(cn)) return 350;
+
+            return -1;
+        }
 
         function buildGameId(jogo) {
             const rawId = String(jogo?.id ?? '').trim();

@@ -838,7 +838,12 @@ if (empty($iframe_url)) {
         };
 
         const normalizeName = (name) => {
-            let n = String(name || '').toLowerCase().replace(/[\s\-]/g, '');
+            let n = String(name || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[\s\-]/g, '')
+                .replace(/\+/g, 'plus');
 
             if (n.startsWith('bbb')) {
                 n = n.replace(/2[0-9]cam0?/g, '')
@@ -859,8 +864,49 @@ if (empty($iframe_url)) {
                 n = n.replace(/1$/i, '');
             }
 
+            if (/^paramountplus$/.test(n) || /^paramount1$/.test(n)) {
+                n = 'paramountplus1';
+            }
+            if (/^paramountplus1$/.test(n)) {
+                n = 'paramountplus1';
+            }
+            if (/^paramountplus2$/.test(n) || /^paramount2$/.test(n)) {
+                n = 'paramountplus2';
+            }
+
             return n;
         };
+
+        function splitBaseAndNumber(value) {
+            const m = String(value || '').match(/^(.*?)(\d+)$/);
+            if (!m) return { base: String(value || ''), num: '' };
+            return { base: m[1], num: m[2] };
+        }
+
+        function scoreChannelMatch(c, pidRaw, pidNorm) {
+            const cn = normalizeName(c?.nome || '');
+            if (!cn || !pidNorm) return -1;
+
+            if (String(c?.embedtv_id || '') === String(pidRaw || '')) return 1000;
+            if (cn === pidNorm) return 900;
+
+            const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
+            const pidSportv = pidNorm.replace(/^sporto(\d+)$/, 'sportv$1');
+            if (cnSportv === pidNorm || cn === pidSportv || cnSportv === pidSportv) return 850;
+
+            const pidParts = splitBaseAndNumber(pidNorm);
+            const cnParts = splitBaseAndNumber(cn);
+
+            if (pidParts.num !== '') {
+                if (cnParts.base === pidParts.base && cnParts.num === pidParts.num) return 840;
+                if (cn === pidParts.base) return 120;
+            }
+
+            if (cn.includes(pidNorm) || pidNorm.includes(cn)) return 400;
+            if (cn.startsWith(pidNorm) || pidNorm.startsWith(cn)) return 350;
+
+            return -1;
+        }
 
         function buildGameId(jogo) {
             const rawId = String(jogo?.id ?? '').trim();
@@ -892,14 +938,9 @@ if (empty($iframe_url)) {
             assistMetaLoadingPromise = (async () => {
                 try {
                     const sourceCfg = getAssistChannelsSourceConfig();
-                    const secondarySource = sourceCfg.key === MAIN_CHANNELS_APIS.noticias70.key
-                        ? MAIN_CHANNELS_APIS.bugoumods
-                        : MAIN_CHANNELS_APIS.noticias70;
-
-                    const [resEmbed, resMainPrimary, resMainSecondary, overridesRes] = await Promise.all([
+                    const [resEmbed, resMainSelected, overridesRes] = await Promise.all([
                         fetch('proxy_embedtv.php?resource=channels', { cache: 'no-store' }).then(r => r.json()).catch(() => null),
                         fetch(`${sourceCfg.url}&_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => ({})),
-                        fetch(`${secondarySource.url}&_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => ({})),
                         fetch(`admin_api.php?action=get_overrides&data=${localDateYmd()}&_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => ({}))
                     ]);
 
@@ -973,8 +1014,7 @@ if (empty($iframe_url)) {
                         });
                     };
 
-                    mergeMainSource(resMainPrimary);
-                    mergeMainSource(resMainSecondary);
+                    mergeMainSource(resMainSelected);
 
                     assistChannelsForGames = Object.values(groupedChannels).filter(c => Array.isArray(c.streams) && c.streams.length > 0);
                     assistAdminOverrides = (overridesRes && typeof overridesRes === 'object') ? overridesRes : {};
@@ -985,6 +1025,16 @@ if (empty($iframe_url)) {
             })();
 
             return assistMetaLoadingPromise;
+        }
+
+        async function refreshAssistOverrides() {
+            try {
+                const overridesRes = await fetch(`admin_api.php?action=get_overrides&data=${localDateYmd()}&_t=${Date.now()}`, { cache: 'no-store' })
+                    .then(r => r.json())
+                    .catch(() => ({}));
+                assistAdminOverrides = (overridesRes && typeof overridesRes === 'object') ? overridesRes : {};
+            } catch (e) {
+            }
         }
 
         const getTeamLogoUrl = (name) => {
@@ -1438,16 +1488,10 @@ if (empty($iframe_url)) {
                 const byApiIdMatches = [];
                 apiPlayerIds.forEach((pid) => {
                     const pidNorm = normalizeName(pid);
-                    const ch = channelsToUse.find(c => {
-                        const cn = normalizeName(c.nome || '');
-                        if (String(c.embedtv_id || '') === pid) return true;
-                        if (cn === pidNorm || cn.replace(/1$/, '') === pidNorm || pidNorm.replace(/1$/, '') === cn) return true;
-                        const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
-                        const pidSportv = pidNorm.replace(/^sporto(\d+)$/, 'sportv$1');
-                        if (cnSportv === pidNorm || cn === pidSportv || cnSportv === pidSportv) return true;
-                        if (cn.includes(pidNorm) || pidNorm.includes(cn)) return true;
-                        return cn.startsWith(pidNorm) || pidNorm.startsWith(cn);
-                    });
+                    const ch = channelsToUse
+                        .map(c => ({ c, score: scoreChannelMatch(c, pid, pidNorm) }))
+                        .filter(item => item.score >= 0)
+                        .sort((a, b) => b.score - a.score)[0]?.c || null;
                     if (ch && !byApiIdMatches.some(x => x.nome === ch.nome)) byApiIdMatches.push(ch);
                 });
 
@@ -1482,13 +1526,10 @@ if (empty($iframe_url)) {
                     }
                     if (urlId) {
                         const idNorm = normalizeName(urlId);
-                        matchedChannel = channelsToUse.find(c => {
-                            const cn = normalizeName(c.nome || '');
-                            if (cn === idNorm || cn.replace(/1$/, '') === idNorm || idNorm.replace(/1$/, '') === cn) return true;
-                            const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
-                            const idNormSportv = idNorm.replace(/^sporto(\d+)$/, 'sportv$1');
-                            return cnSportv === idNorm || cn === idNormSportv || cnSportv === idNormSportv;
-                        });
+                        matchedChannel = channelsToUse
+                            .map(c => ({ c, score: scoreChannelMatch(c, urlId, idNorm) }))
+                            .filter(item => item.score >= 0)
+                            .sort((a, b) => b.score - a.score)[0]?.c || null;
                     }
                 }
 
@@ -1508,13 +1549,10 @@ if (empty($iframe_url)) {
                 }
                 if (urlId) {
                     const idNorm = normalizeName(urlId);
-                    const matchByUrl = channelsToUse.find(c => {
-                        const cn = normalizeName(c.nome || '');
-                        if (cn === idNorm || cn.replace(/1$/, '') === idNorm || idNorm.replace(/1$/, '') === cn) return true;
-                        const cnSportv = cn.replace(/^sporto(\d+)$/, 'sportv$1');
-                        const idNormSportv = idNorm.replace(/^sporto(\d+)$/, 'sportv$1');
-                        return cnSportv === idNorm || cn === idNormSportv || cnSportv === idNormSportv;
-                    });
+                    const matchByUrl = channelsToUse
+                        .map(c => ({ c, score: scoreChannelMatch(c, urlId, idNorm) }))
+                        .filter(item => item.score >= 0)
+                        .sort((a, b) => b.score - a.score)[0]?.c || null;
                     if (matchByUrl && Array.isArray(matchByUrl.streams)) {
                         detectedStreams = matchByUrl.streams.map(s => ({
                             name: s.name,
@@ -1721,8 +1759,11 @@ if (empty($iframe_url)) {
             await loadAssistGameMeta();
 
             try {
-                const payload = await fetch(`assist_games_snapshot.php?_t=${Date.now()}`, { cache: 'no-store' })
-                    .then(r => r.ok ? r.json() : Promise.reject(new Error('snapshot-error')));
+                const [payload] = await Promise.all([
+                    fetch(`assist_games_snapshot.php?_t=${Date.now()}`, { cache: 'no-store' })
+                        .then(r => r.ok ? r.json() : Promise.reject(new Error('snapshot-error'))),
+                    refreshAssistOverrides()
+                ]);
 
                 assistJogos = Array.isArray(payload?.games) ? payload.games : [];
 
@@ -1764,7 +1805,8 @@ if (empty($iframe_url)) {
                 try {
                     const [jogosRes, scraped] = await Promise.all([
                         fetch(`proxy_embedtv.php?resource=jogos&_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => []),
-                        fetchAssistLiveScores()
+                        fetchAssistLiveScores(),
+                        refreshAssistOverrides()
                     ]);
 
                     assistJogos = Array.isArray(jogosRes) ? jogosRes : [];
